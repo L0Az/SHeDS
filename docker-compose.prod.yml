@@ -1,0 +1,48 @@
+version: '3.7'
+
+volumes:
+  pg_data: {}
+
+services:
+  db:
+    image: postgres:16.2
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-56000}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: ghcr.io/${GITHUB_REPOSITORY}:latest
+    restart: always
+    command: gunicorn --bind 0.0.0.0:9000 --workers 3 config.wsgi:application
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    volumes:
+      - ./oci_api_key.pem:/app/oci_api_key.pem:ro
+    ports:
+      - "9000:9000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - CACHE_LOCATION=redis:6379/0
+      - DJANGO_SETTINGS_MODULE=config.settings.production
+
+  redis:
+    image: redis:7.0-alpine
+    restart: always
+

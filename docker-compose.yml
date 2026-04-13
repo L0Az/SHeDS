@@ -1,0 +1,17 @@
+version: '3.7'
+
+volumes:
+  pg_data: {}
+
+services:
+  db:
+    image: postgres:16.2
+    restart: always
+    environment:
+      POSTGRES_DB: sheds_db
+      POSTGRES_USER: sheds_user
+      POSTGRES_PASSWORD: sheds_password
+    ports:
+      - "55999:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data

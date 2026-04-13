@@ -1,0 +1,79 @@
+[project]
+name = "SHeDS"
+version = "0.1.0"
+description = "Simplified HelpDesk System"
+authors = [
+    { name = "Diogo", email = "sansonoved@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0",
+    "djangorestframework>=3.15.2",
+    "django-cors-headers>=4.6.0",
+    "django-extensions>=3.2.3",
+    "djangorestframework-simplejwt>=5.4.0",
+    "django-filter>=24.3",
+    "django-hosts>=6.0",
+    "django-admin-rangefilter>=0.13.2",
+    "django-nested-inline>=0.4.6",
+    "django-ipware>=7.0.1",
+    "django-redis>=5.4.0",
+    "psycopg2-binary>=2.9.10",
+    "croniter>=6.0.0",
+    "drf-yasg>=1.21.8",
+    "werkzeug>=3.1.3",
+    "requests>=2.32.3",
+    "python-decouple>=3.8",
+    "pillow>=11.1.0",
+    "sentry-sdk>=2.19.2",
+    "gunicorn>=23.0.0",
+    "oci>=2.0.0",
+    "uvicorn>=0.34.0",
+    "django-simple-history>=3.11.0",
+    "django-guardian>=3.3.1",
+]
+
+[dependency-groups]
+dev = [
+    "black>=24.10.0",
+    "flake8>=7.1.1",
+    "isort>=5.13.2",
+    "codecov>=2.1.13",
+    "coverage>=7.6.10",
+    "factory-boy>=3.3.1",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "pytest-django>=4.9.0",
+    "pytest-mock>=3.14.0",
+    "pytest-xdist>=3.6.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "config", "vendor"]
+
+[tool.black]
+line-length = 160
+skip-string-normalization = true
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.tests"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+

@@ -1,0 +1,15 @@
+{
+  "name": "sheds-api",
+  "version": "1.0.0",
+  "description": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/L0Az/SHeDS"
+  },
+  "author": "",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/L0Az/SHeDS/issues"
+  },
+  "homepage": "https://github.com/L0Az/SHeDS#readme"
+}
