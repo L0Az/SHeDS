@@ -1,0 +1,15 @@
+LIGHT_THEME_OPTION = 'light'
+DARK_THEME_OPTION = 'dark'
+
+THEME_CHOICES = [
+    (LIGHT_THEME_OPTION, 'Light'),
+    (DARK_THEME_OPTION, 'Dark')
+]
+
+EN_LANGUAGE_OPTION = "en"
+PT_LANGUAGE_OPTION = "pt"
+
+LANGUAGE_CHOICES = [
+    (EN_LANGUAGE_OPTION, "English"),
+    (PT_LANGUAGE_OPTION, "Português")
+]

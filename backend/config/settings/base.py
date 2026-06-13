@@ -62,6 +62,8 @@ INSTALLED_APPS = [
     "corsheaders",
     # apps
     "app.accounts",
+    "app.helpdesk",
+    "app.settings",
 ]
 
 MIDDLEWARE = [

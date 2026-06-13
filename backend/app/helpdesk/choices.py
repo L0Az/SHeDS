@@ -1,0 +1,21 @@
+OPEN_TICKET_STATUS = 'open'
+CLOSED_TICKET_STATUS = 'closed'
+IN_PROGRESS_TICKET_STATUS = 'in_progress'
+IN_DEVELOPMENT_TICKET_STATUS = 'in_development'
+
+TICKET_STATUS_CHOICES = [
+    (OPEN_TICKET_STATUS, 'Aberto'),
+    (CLOSED_TICKET_STATUS, 'Fechado'),
+    (IN_PROGRESS_TICKET_STATUS, 'Em Progresso'),
+    (IN_DEVELOPMENT_TICKET_STATUS, 'Em Desenvolvimento')
+]
+
+HIGH_PRIORITY = 'high'
+MEDIUM_PRIORITY = 'medium'
+LOW_PRIORITY = 'low'
+PRIORITY_CHOICES = [
+    (HIGH_PRIORITY, 'Alta'),
+    (MEDIUM_PRIORITY, 'Média'),
+    (LOW_PRIORITY, 'Baixa')
+]
+

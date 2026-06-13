@@ -1,0 +1,34 @@
+from django.db import models
+
+from app.settings import choices as settings_choices
+from app.helpdesk import choices as helpdesk_choices
+
+class AppConfig(models.Model):
+    app_name = models.CharField(max_length=255, unique=True)
+    default_language = models.CharField(max_length=2, default=settings_choices.EN_LANGUAGE_OPTION, choices=settings_choices.LANGUAGE_CHOICES)
+    default_theme = models.CharField(max_length=20, default=settings_choices.LIGHT_THEME_OPTION, choices=settings_choices.THEME_CHOICES)
+    allow_customer_signup = models.BooleanField(default=False)
+    logo = models.ImageField(upload_to='app_logos/', blank=True, null=True)
+    email_notifications_enabled = models.BooleanField(default=True)
+    notify_on_comment = models.BooleanField(default=True)
+    notify_on_status_change = models.BooleanField(default=True)
+    notify_on_assignment = models.BooleanField(default=True)
+    auto_close_inactive_tickets = models.BooleanField(default=False)
+    auto_close_after_days = models.PositiveIntegerField(default=30)
+    default_ticket_priority = models.CharField(max_length=20, default=helpdesk_choices.MEDIUM_PRIORITY, choices=helpdesk_choices.PRIORITY_CHOICES)
+    log_retention_days = models.PositiveIntegerField(default=90)
+    oci_tenancy_ocid = models.CharField(max_length=255, blank=True, null=True)
+    oci_user_ocid = models.CharField(max_length=255, blank=True, null=True)
+    oci_key_fingerprint = models.CharField(max_length=255, blank=True, null=True)
+    oci_private_key = models.CharField(max_length=255, blank=True, null=True)
+    oci_region = models.CharField(max_length=255, blank=True, null=True)
+    oci_compartment_ocid = models.CharField(max_length=255, blank=True, null=True)
+    oci_bucket_name = models.CharField(max_length=255, blank=True, null=True)
+    oci_bucket_namespace = models.CharField(max_length=255, blank=True, null=True)
+    oci_sender_email = models.EmailField(blank=True, null=True)
+    
+    def save(self, *args, **kwargs):
+        if not self.pk and AppConfig.objects.exists():
+            raise ValueError("Já existe uma configuração de aplicativo. Apenas uma é permitida.")
+        return super().save(*args, **kwargs)
+    
