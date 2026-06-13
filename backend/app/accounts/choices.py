@@ -14,3 +14,13 @@ NOTIFICATION_KIND_CHOICES = [
     (NOTIFICATION_KIND_TICKET_ASSIGNED, 'Ticket Atribuído'),
     (NOTIFICATION_KIND_TICKET_UNASSIGNED, 'Ticket Desatribuído')
 ]
+
+ADMIN_USER_TYPE = 'admin'
+TECHNICIAN_USER_TYPE = 'technician'
+CUSTOMER_USER_TYPE = 'customer'
+
+USER_TYPE_CHOICES = [
+    (ADMIN_USER_TYPE, 'Administrador'),
+    (TECHNICIAN_USER_TYPE, 'Técnico'),
+    (CUSTOMER_USER_TYPE, 'Cliente')
+]

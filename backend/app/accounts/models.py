@@ -6,13 +6,14 @@ from app.accounts import choices as accounts_choices
 from app.common.models import DefaultModel
 
 
-class User(AbstractBaseUser):
+class User(AbstractBaseUser, DefaultModel):
     USERNAME_FIELD = "email"
-    name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
+    email = models.EmailField(unique=True, null=True, blank=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
     department = models.ForeignKey("helpdesk.Department", on_delete=models.SET_NULL, blank=True, null=True)
     language = models.CharField(max_length=2, choices=accounts_choices.LANGUAGE_CHOICES, default=accounts_choices.EN_LANGUAGE_OPTION)
+    type = models.CharField(max_length=20, choices=accounts_choices.USER_TYPE_CHOICES, default=accounts_choices.CUSTOMER_USER_TYPE)
 
     objects = UserManager()
 
