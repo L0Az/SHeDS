@@ -28,3 +28,14 @@ class UserSerializer(serializers.ModelSerializer):
 class AdminUserSerializer(UserSerializer):
     class Meta(UserSerializer.Meta):
         fields = UserSerializer.Meta.fields + ["is_staff", "is_superuser"]
+
+
+VALID_USER_PERMISSIONS = ["view_user", "change_user", "delete_user"]
+
+
+class UserPermissionSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    permissions = serializers.ListField(
+        child=serializers.ChoiceField(choices=VALID_USER_PERMISSIONS),
+        min_length=1,
+    )

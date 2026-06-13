@@ -1,12 +1,12 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 
 from app.accounts.managers import UserManager
 from app.accounts import choices as accounts_choices
 from app.common.models import DefaultModel
 
 
-class User(AbstractBaseUser, DefaultModel):
+class User(AbstractBaseUser, PermissionsMixin, DefaultModel):
     USERNAME_FIELD = "email"
     name = models.CharField(max_length=255, null=True, blank=True)
     email = models.EmailField(unique=True, null=True, blank=True)
@@ -14,6 +14,7 @@ class User(AbstractBaseUser, DefaultModel):
     department = models.ForeignKey("helpdesk.Department", on_delete=models.SET_NULL, blank=True, null=True)
     language = models.CharField(max_length=2, choices=accounts_choices.LANGUAGE_CHOICES, default=accounts_choices.EN_LANGUAGE_OPTION)
     type = models.CharField(max_length=20, choices=accounts_choices.USER_TYPE_CHOICES, default=accounts_choices.CUSTOMER_USER_TYPE)
+    is_staff = models.BooleanField(default=False)
 
     objects = UserManager()
 

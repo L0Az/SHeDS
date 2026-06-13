@@ -1,4 +1,4 @@
-from backend.config.settings.base import *  # noqa
+from config.settings.base import *  # noqa
 
 SECRET_KEY = 'yymxp*lpy_wuxbcc8zxduz9p(thzliu67zzwbe$o'
 

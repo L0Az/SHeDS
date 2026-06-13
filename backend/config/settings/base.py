@@ -43,8 +43,15 @@ ALLOWED_HOSTS = config(
     "ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(",")], default="*"
 )
 
-# AUTH_USER_MODEL = "accounts.User"
+AUTH_USER_MODEL = "accounts.User"
 # AUTHENTICATION_BACKENDS = ("app.accounts.backends.CaseInsensitiveModelBackend",)
+
+AUTHENTICATION_BACKENDS = (
+    "django.contrib.auth.backends.ModelBackend",
+    "guardian.backends.ObjectPermissionBackend",
+)
+
+ANONYMOUS_USER_NAME = None
 
 # Application definition
 
@@ -60,6 +67,7 @@ INSTALLED_APPS = [
     "django_extensions",
     "drf_yasg",
     "corsheaders",
+    "guardian",
     # apps
     "app.accounts",
     "app.helpdesk",
