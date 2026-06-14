@@ -1,13 +1,22 @@
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
+from app.accounts import choices as account_choices
 from app.accounts.models import User, UserNotifications
 
 
 class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+    name = serializers.CharField(required=True)
+    email = serializers.EmailField(required=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+    department = serializers.CharField(required=False, allow_blank=True)
+    language = serializers.ChoiceField(choices=account_choices.LANGUAGE_CHOICES, required=False)
+    type = serializers.ChoiceField(choices=account_choices.USER_TYPE_CHOICES, required=False)
+    
     class Meta:
         model = User
-        fields = ["id", "name", "email", "phone", "department", "language", "type"]
+        fields = ["id", "name", "email", "password", "phone", "department", "language", "type"]
         
     def create(self, validated_data):
         password = validated_data.pop("password", None)

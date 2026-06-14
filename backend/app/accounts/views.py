@@ -56,10 +56,9 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
 
 class UserPermissionsView(generics.GenericAPIView):
-    """Grant or revoke guardian object-level permissions on a user instance."""
     permission_classes = [IsAuthenticated, IsAdmin]
 
-    def post(self, request, pk):
+    def post(self, request, pk, **kwargs):
         target = get_user(pk)
         serializer = UserPermissionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -68,7 +67,7 @@ class UserPermissionsView(generics.GenericAPIView):
             assign_perm(perm, grantee, target)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def delete(self, request, pk):
+    def delete(self, request, pk, **kwargs):
         target = get_user(pk)
         serializer = UserPermissionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

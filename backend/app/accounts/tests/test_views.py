@@ -7,6 +7,8 @@ from guardian.shortcuts import assign_perm, get_perms
 
 User = get_user_model()
 
+V1 = {"version": "v1"}
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -41,11 +43,54 @@ def other_customer(db):
 
 
 # ---------------------------------------------------------------------------
+# LoginView  POST /v1/auth/login/
+# ---------------------------------------------------------------------------
+
+class TestLoginView:
+    url = reverse("token-obtain", kwargs=V1)
+
+    def test_returns_tokens_on_valid_credentials(self, api_client, customer):
+        res = api_client.post(self.url, {"email": "customer@example.com", "password": "pass"})
+        assert res.status_code == 200
+        assert "access" in res.data
+        assert "refresh" in res.data
+
+    def test_wrong_password_rejected(self, api_client, customer):
+        res = api_client.post(self.url, {"email": "customer@example.com", "password": "wrong"})
+        assert res.status_code == 401
+
+    def test_unknown_email_rejected(self, api_client):
+        res = api_client.post(self.url, {"email": "nobody@example.com", "password": "pass"})
+        assert res.status_code == 401
+
+    def test_missing_password_rejected(self, api_client, customer):
+        res = api_client.post(self.url, {"email": "customer@example.com"})
+        assert res.status_code == 400
+
+    def test_missing_email_rejected(self, api_client):
+        res = api_client.post(self.url, {"password": "pass"})
+        assert res.status_code == 400
+
+    def test_access_token_contains_role(self, api_client, customer):
+        import base64, json
+        res = api_client.post(self.url, {"email": "customer@example.com", "password": "pass"})
+        payload = json.loads(base64.b64decode(res.data["access"].split(".")[1] + "=="))
+        assert payload["role"] == "customer"
+
+    def test_access_token_contains_name(self, api_client):
+        user = make_user("named@example.com", "technician", name="Alice")
+        res = api_client.post(self.url, {"email": "named@example.com", "password": "pass"})
+        import base64, json
+        payload = json.loads(base64.b64decode(res.data["access"].split(".")[1] + "=="))
+        assert payload["name"] == "Alice"
+
+
+# ---------------------------------------------------------------------------
 # FirstUserView  POST /first-user/
 # ---------------------------------------------------------------------------
 
 class TestFirstUserView:
-    url = reverse("first-user")
+    url = reverse("first-user", kwargs=V1)
 
     def test_creates_first_superuser(self, api_client):
         res = api_client.post(self.url, {"email": "first@example.com", "password": "pass"})
@@ -62,7 +107,7 @@ class TestFirstUserView:
 # ---------------------------------------------------------------------------
 
 class TestUserListCreateView:
-    url = reverse("user-list-create")
+    url = reverse("user-list-create", kwargs=V1)
 
     def test_list_unauthenticated(self, api_client):
         res = api_client.get(self.url)
@@ -111,7 +156,7 @@ class TestUserListCreateView:
 
 class TestUserRetrieveUpdateView:
     def url(self, pk):
-        return reverse("user-detail", kwargs={"pk": pk})
+        return reverse("user-detail", kwargs={"version": "v1", "pk": pk})
 
     def test_retrieve_unauthenticated(self, api_client, customer):
         res = api_client.get(self.url(customer.pk))
@@ -185,7 +230,7 @@ class TestUserRetrieveUpdateView:
 
 class TestUserPermissionsView:
     def url(self, pk):
-        return reverse("user-permissions", kwargs={"pk": pk})
+        return reverse("user-permissions", kwargs={"version": "v1", "pk": pk})
 
     def test_grant_blocked_for_non_admin(self, api_client, customer, other_customer):
         api_client.force_authenticate(user=customer)
@@ -245,7 +290,7 @@ class TestUserPermissionsView:
         )
         api_client.force_authenticate(user=customer)
         res = api_client.patch(
-            reverse("user-detail", kwargs={"pk": other_customer.pk}),
+            reverse("user-detail", kwargs={"version": "v1", "pk": other_customer.pk}),
             {"name": "Allowed"},
         )
         assert res.status_code == 200
@@ -260,7 +305,7 @@ class TestUserPermissionsView:
         )
         api_client.force_authenticate(user=customer)
         res = api_client.patch(
-            reverse("user-detail", kwargs={"pk": other_customer.pk}),
+            reverse("user-detail", kwargs={"version": "v1", "pk": other_customer.pk}),
             {"name": "Blocked"},
         )
         assert res.status_code == 403

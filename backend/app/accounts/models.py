@@ -21,6 +21,9 @@ class User(AbstractBaseUser, PermissionsMixin, DefaultModel):
     class Meta:
         verbose_name = "Usuário"
         verbose_name_plural = "Usuários"
+        permissions = [
+            ('change_permissions', 'Can change user permissions'),
+        ]
         
         
 class UserNotifications(DefaultModel):

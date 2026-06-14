@@ -34,10 +34,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", default="56999"),
-        "USER": config("DB_USER", default="portfolio_user"),
-        "PASSWORD": config("DB_PASSWORD", default="portfolio_password"),
-        "NAME": config("DB_NAME", default="portfolio_db"),
+        "PORT": config("DB_PORT", default="55999"),
+        "USER": config("DB_USER", default="sheds_user"),
+        "PASSWORD": config("DB_PASSWORD", default="sheds_password"),
+        "NAME": config("DB_NAME", default="sheds_db"),
     }
 }
 
