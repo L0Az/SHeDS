@@ -11,6 +11,7 @@ from app.accounts.models import User
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
 from app.accounts.serializers import UserSerializer, UserPermissionSerializer
 from app.accounts.services.user import get_user
+from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
 
 
@@ -86,5 +87,9 @@ class FirstUserView(generics.CreateAPIView):
             raise ValidationError("A user already exists.")
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            User.objects.create_superuser(**serializer.validated_data)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            user = User.objects.create_superuser(**serializer.validated_data)
+            token = CustomTokenObtainPairSerializer.get_token(user)
+            return Response(
+                {"access": str(token.access_token), "refresh": str(token)},
+                status=status.HTTP_201_CREATED,
+            )

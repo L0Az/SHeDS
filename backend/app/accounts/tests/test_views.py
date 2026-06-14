@@ -93,9 +93,11 @@ class TestFirstUserView:
     url = reverse("first-user", kwargs=V1)
 
     def test_creates_first_superuser(self, api_client):
-        res = api_client.post(self.url, {"email": "first@example.com", "password": "pass"})
+        res = api_client.post(self.url, {"name": "Admin", "email": "first@example.com", "password": "pass"})
         assert res.status_code == 201
         assert User.objects.filter(email="first@example.com", is_superuser=True).exists()
+        assert "access" in res.data
+        assert "refresh" in res.data
 
     def test_blocked_when_user_already_exists(self, api_client, customer):
         res = api_client.post(self.url, {"email": "new@example.com", "password": "pass"})
@@ -135,18 +137,18 @@ class TestUserListCreateView:
 
     def test_create_as_admin(self, api_client, admin):
         api_client.force_authenticate(user=admin)
-        res = api_client.post(self.url, {"email": "new@example.com", "password": "pass"})
+        res = api_client.post(self.url, {"name": "New User", "email": "new@example.com", "password": "pass"})
         assert res.status_code == 201
 
     def test_create_blocked_without_permission(self, api_client, customer):
         api_client.force_authenticate(user=customer)
-        res = api_client.post(self.url, {"email": "new@example.com", "password": "pass"})
+        res = api_client.post(self.url, {"name": "New User", "email": "new@example.com", "password": "pass"})
         assert res.status_code == 403
 
     def test_create_allowed_with_add_permission(self, api_client, customer):
         customer.user_permissions.add(get_model_perm("add_user"))
         api_client.force_authenticate(user=customer)
-        res = api_client.post(self.url, {"email": "new@example.com", "password": "pass"})
+        res = api_client.post(self.url, {"name": "New User", "email": "new@example.com", "password": "pass"})
         assert res.status_code == 201
 
 
