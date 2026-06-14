@@ -1,4 +1,5 @@
 from django.contrib.auth.models import BaseUserManager
+
 from app.accounts import choices as accounts_choices
 
 
@@ -17,7 +18,7 @@ class UserManager(BaseUserManager):
         user.type = accounts_choices.ADMIN_USER_TYPE
         user.save(using=self._db)
         return user
-    
+
     def create_technician(self, **kwargs):
         user = self.create_user(**kwargs)
         user.is_staff = True

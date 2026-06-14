@@ -39,9 +39,7 @@ ENV = config("ENV", default="LOCAL", cast=str)
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
 
-ALLOWED_HOSTS = config(
-    "ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(",")], default="*"
-)
+ALLOWED_HOSTS = config("ALLOWED_HOSTS", cast=lambda v: [s.strip() for s in v.split(",")], default="*")
 
 AUTH_USER_MODEL = "accounts.User"
 # AUTHENTICATION_BACKENDS = ("app.accounts.backends.CaseInsensitiveModelBackend",)

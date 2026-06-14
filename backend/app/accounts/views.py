@@ -1,15 +1,13 @@
 from django.utils import timezone
-
+from guardian.shortcuts import assign_perm, remove_perm
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from guardian.shortcuts import assign_perm, remove_perm
-
 from app.accounts.models import User
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
-from app.accounts.serializers import UserSerializer, UserPermissionSerializer
+from app.accounts.serializers import VALID_PERMISSIONS, UserPermissionSerializer, UserSerializer
 from app.accounts.services.user import get_user
 from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
@@ -58,6 +56,11 @@ class UserRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
 class UserPermissionsView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated, IsAdmin]
+
+    def get(self, request, pk, **kwargs):
+        target = get_user(pk)
+        current = list(target.user_permissions.filter(codename__in=VALID_PERMISSIONS).values_list("codename", flat=True))
+        return Response({"permissions": current})
 
     def post(self, request, pk, **kwargs):
         target = get_user(pk)

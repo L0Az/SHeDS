@@ -1,16 +1,13 @@
 import logging
 
-from django.conf import settings
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
 
 class RequestLogMiddleware(MiddlewareMixin):
     def process_request(self, request):
@@ -24,8 +21,10 @@ class RequestLogMiddleware(MiddlewareMixin):
         logging.info(f"Method: {method}")
         content_type = request.content_type
         logging.info(f"Content Type: {content_type}")
+
     def process_response(self, request, response):
         timestamp = timezone.now()
+        logging.info(f"Response: {timestamp}")
         return response
 
 

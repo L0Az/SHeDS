@@ -1,6 +1,6 @@
 from django.urls import re_path
 
-from app.helpdesk.views import DepartmentView, CategoryView, TicketView, DepartmentDetailView, CategoryDetailView, TicketDetailView
+from app.helpdesk.views import CategoryDetailView, CategoryView, DepartmentDetailView, DepartmentView, TicketDetailView, TicketView
 
 urlpatterns = [
     re_path(r"^(?P<version>(v1))/helpdesk/departments/", DepartmentView.as_view(), name="department-list-create"),

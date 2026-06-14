@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Pencil, Trash2, KeyRound } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Loader2 } from "lucide-react";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { RoleBadge } from "@/components/ui/badge";
 import { extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
-import type { User, PaginatedResponse } from "@/types";
+import type { User, Department, PaginatedResponse } from "@/types";
 
 const createSchema = z.object({
   name: z.string().min(2, "Name required"),
@@ -27,23 +27,32 @@ const createSchema = z.object({
   language: z.string(),
 });
 const editSchema = createSchema.extend({ password: z.string().optional() });
-type CreateFormData = z.infer<typeof createSchema>;
 type EditFormData = z.infer<typeof editSchema>;
 
 const LIMIT = 10;
 
-const PERM_OPTIONS = [
-  { value: "view_user", label: "View" },
-  { value: "change_user", label: "Edit" },
-  { value: "delete_user", label: "Delete" },
-];
+const PERMISSION_MODELS = [
+  { key: "user",              label: "User" },
+  { key: "department",        label: "Department" },
+  { key: "category",          label: "Category" },
+  { key: "ticket",            label: "Ticket" },
+  { key: "ticketcomment",     label: "Ticket Comment" },
+  { key: "ticketattachment",  label: "Ticket Attachment" },
+] as const;
+
+const PERMISSION_ACTIONS = ["view", "add", "change", "delete"] as const;
+
+function permCode(action: string, model: string) {
+  return `${action}_${model}`;
+}
 
 interface UsersClientProps {
   initialData: PaginatedResponse<User>;
   allUsers: User[];
+  departments: Department[];
 }
 
-export function UsersClient({ initialData, allUsers }: UsersClientProps) {
+export function UsersClient({ initialData, allUsers: _allUsers, departments }: UsersClientProps) {
   const { toast } = useToast();
   const [data, setData] = useState(initialData);
   const [offset, setOffset] = useState(0);
@@ -51,10 +60,13 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
+
+  // Permissions state
   const [permTarget, setPermTarget] = useState<User | null>(null);
-  const [permUserId, setPermUserId] = useState<string | null>(null);
-  const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
+  const [permLoading, setPermLoading] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
+  const [activePerms, setActivePerms] = useState<Set<string>>(new Set());
+  const [originalPerms, setOriginalPerms] = useState<Set<string>>(new Set());
 
   const roleOptions = [
     { value: "admin", label: "Administrator" },
@@ -65,6 +77,8 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
     { value: "en", label: "English" },
     { value: "pt", label: "Português" },
   ];
+  const deptOptions = departments.map((d) => ({ value: String(d.id), label: d.name }));
+  const deptMap = Object.fromEntries(departments.map((d) => [d.id, d.name]));
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } =
     useForm<EditFormData>({
@@ -87,13 +101,13 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
 
   const openCreate = () => {
     setEditing(null);
-    reset({ name: "", email: "", password: "", phone: "", department: "", type: "customer", language: "en" });
+    reset({ name: "", email: "", password: "", phone: "", department: null as unknown as string, type: "customer", language: "en" });
     setFormOpen(true);
   };
 
   const openEdit = (u: User) => {
     setEditing(u);
-    reset({ name: u.name, email: u.email, password: "", phone: u.phone ?? "", department: u.department ?? "", type: u.type, language: u.language });
+    reset({ name: u.name, email: u.email, password: "", phone: u.phone ?? "", department: u.department ? String(u.department) : (null as unknown as string), type: u.type, language: u.language });
     setFormOpen(true);
   };
 
@@ -101,6 +115,7 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
     try {
       const payload: Record<string, unknown> = { ...formData };
       if (!payload.password) delete payload.password;
+      payload.department = formData.department ? Number(formData.department) : null;
       if (editing) {
         await api.patch(`/accounts/users/${editing.id}/`, payload);
         toast("success", "User updated");
@@ -127,27 +142,55 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
     }
   };
 
-  const openPerms = (u: User) => {
+  const openPerms = async (u: User) => {
     setPermTarget(u);
-    setPermUserId(null);
-    setSelectedPerms([]);
+    setActivePerms(new Set());
+    setOriginalPerms(new Set());
+    setPermLoading(true);
+    try {
+      const res = await api.get<{ permissions: string[] }>(`/accounts/users/${u.id}/permissions/`);
+      const loaded = new Set(res.permissions);
+      setActivePerms(loaded);
+      setOriginalPerms(loaded);
+    } catch {
+      toast("error", "Failed to load permissions");
+    } finally {
+      setPermLoading(false);
+    }
   };
 
-  const togglePerm = (p: string) => {
-    setSelectedPerms((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
+  const togglePerm = (code: string) => {
+    setActivePerms((prev) => {
+      const next = new Set(prev);
+      next.has(code) ? next.delete(code) : next.add(code);
+      return next;
+    });
   };
 
-  const grantPerms = async () => {
-    if (!permTarget || !permUserId || selectedPerms.length === 0) return;
+  const toggleRow = (modelKey: string) => {
+    const allCodes = PERMISSION_ACTIONS.map((a) => permCode(a, modelKey));
+    const allChecked = allCodes.every((c) => activePerms.has(c));
+    setActivePerms((prev) => {
+      const next = new Set(prev);
+      allCodes.forEach((c) => allChecked ? next.delete(c) : next.add(c));
+      return next;
+    });
+  };
+
+  const savePerms = async () => {
+    if (!permTarget) return;
     setPermSaving(true);
     try {
-      await api.post(`/accounts/users/${permTarget.id}/permissions/`, {
-        user_id: Number(permUserId),
-        permissions: selectedPerms,
-      });
-      toast("success", "Permissions granted");
+      const toGrant = [...activePerms].filter((p) => !originalPerms.has(p));
+      const toRevoke = [...originalPerms].filter((p) => !activePerms.has(p));
+      if (toGrant.length > 0) {
+        await api.post(`/accounts/users/${permTarget.id}/permissions/`, { permissions: toGrant });
+      }
+      if (toRevoke.length > 0) {
+        await api.delete(`/accounts/users/${permTarget.id}/permissions/`, { permissions: toRevoke });
+      }
+      setOriginalPerms(new Set(activePerms));
+      toast("success", "Permissions saved");
     } catch (e) {
       toast("error", extractApiError(e));
     } finally {
@@ -155,23 +198,13 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
     }
   };
 
-  const revokePerms = async () => {
-    if (!permTarget || !permUserId || selectedPerms.length === 0) return;
-    setPermSaving(true);
-    try {
-      await api.delete(`/accounts/users/${permTarget.id}/permissions/`, {
-        user_id: Number(permUserId),
-        permissions: selectedPerms,
-      });
-      toast("success", "Permissions revoked");
-    } catch (e) {
-      toast("error", extractApiError(e));
-    } finally {
-      setPermSaving(false);
+  // Reset permissions dialog when closed
+  useEffect(() => {
+    if (!permTarget) {
+      setActivePerms(new Set());
+      setOriginalPerms(new Set());
     }
-  };
-
-  const userOptions = allUsers.map((u) => ({ value: String(u.id), label: `${u.name} (${u.email})` }));
+  }, [permTarget]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -211,7 +244,7 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
               <Td className="font-medium text-slate-900">{u.name}</Td>
               <Td className="text-slate-600">{u.email}</Td>
               <Td><RoleBadge role={u.type} /></Td>
-              <Td className="text-slate-500">{u.department ?? "—"}</Td>
+              <Td className="text-slate-500">{u.department ? (deptMap[u.department] ?? `#${u.department}`) : "—"}</Td>
               <Td>
                 <div className="flex items-center gap-1">
                   <Button variant="ghost" size="icon" title="Permissions" onClick={() => openPerms(u)}>
@@ -249,7 +282,15 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
           />
           <div className="grid grid-cols-2 gap-3">
             <Input label="Phone" {...register("phone")} />
-            <Input label="Department" {...register("department")} />
+            <Controller name="department" control={control} render={({ field }) => (
+              <AppSelect
+                label="Department"
+                value={field.value ?? null}
+                onValueChange={(v) => field.onChange(v)}
+                options={deptOptions}
+                placeholder="None"
+              />
+            )} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Controller name="type" control={control} render={({ field }) => (
@@ -283,41 +324,70 @@ export function UsersClient({ initialData, allUsers }: UsersClientProps) {
       <AppDialog
         open={!!permTarget}
         onOpenChange={(v) => !v && setPermTarget(null)}
-        title={`Manage permissions on ${permTarget?.name}`}
-        description="Grant or revoke object-level permissions for a specific user."
+        title={`Permissions — ${permTarget?.name}`}
+        description="Grant or revoke model-level permissions for this user."
+        className="max-w-2xl"
       >
-        <div className="flex flex-col gap-4">
-          <AppSelect
-            label="Target user (who receives permissions)"
-            value={permUserId}
-            onValueChange={setPermUserId}
-            options={userOptions}
-            placeholder="Select user…"
-          />
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-slate-700">Permissions</p>
-            {PERM_OPTIONS.map((p) => (
-              <label key={p.value} className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedPerms.includes(p.value)}
-                  onChange={() => togglePerm(p.value)}
-                  className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm text-slate-700">{p.label}</span>
-              </label>
-            ))}
+        {permLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
           </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" onClick={() => setPermTarget(null)}>Close</Button>
-            <Button variant="danger" loading={permSaving} onClick={revokePerms} disabled={!permUserId || selectedPerms.length === 0}>
-              Revoke
-            </Button>
-            <Button loading={permSaving} onClick={grantPerms} disabled={!permUserId || selectedPerms.length === 0}>
-              Grant
-            </Button>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left px-3 py-2 font-medium text-slate-600 w-40">Model</th>
+                    {PERMISSION_ACTIONS.map((a) => (
+                      <th key={a} className="text-center px-3 py-2 font-medium text-slate-600 capitalize w-20">{a}</th>
+                    ))}
+                    <th className="text-center px-3 py-2 font-medium text-slate-600 w-16">All</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERMISSION_MODELS.map(({ key, label }, i) => {
+                    const allCodes = PERMISSION_ACTIONS.map((a) => permCode(a, key));
+                    const allChecked = allCodes.every((c) => activePerms.has(c));
+                    const someChecked = allCodes.some((c) => activePerms.has(c));
+                    return (
+                      <tr key={key} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
+                        <td className="px-3 py-2.5 font-medium text-slate-700">{label}</td>
+                        {PERMISSION_ACTIONS.map((action) => {
+                          const code = permCode(action, key);
+                          return (
+                            <td key={action} className="text-center px-3 py-2.5">
+                              <input
+                                type="checkbox"
+                                checked={activePerms.has(code)}
+                                onChange={() => togglePerm(code)}
+                                className="h-4 w-4 rounded border-slate-300 accent-indigo-600 cursor-pointer"
+                              />
+                            </td>
+                          );
+                        })}
+                        <td className="text-center px-3 py-2.5">
+                          <input
+                            type="checkbox"
+                            checked={allChecked}
+                            ref={(el) => { if (el) el.indeterminate = someChecked && !allChecked; }}
+                            onChange={() => toggleRow(key)}
+                            className="h-4 w-4 rounded border-slate-300 accent-indigo-600 cursor-pointer"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={() => setPermTarget(null)}>Cancel</Button>
+              <Button loading={permSaving} onClick={savePerms}>Save permissions</Button>
+            </div>
           </div>
-        </div>
+        )}
       </AppDialog>
     </div>
   );

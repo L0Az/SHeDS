@@ -62,19 +62,16 @@ class OCIObjectStorage(Storage):
         self.custom_domain = getattr(settings, "OCI_CUSTOM_DOMAIN", "")
         self._client = None
 
-
     @property
     def client(self):
         if self._client is None:
             self._client = _make_client()
         return self._client
 
-
     def _get_key(self, name):
         if self.location:
             return f"{self.location}/{name}".replace("//", "/")
         return name
-
 
     def _save(self, name, content):
         key = self._get_key(name)
@@ -159,10 +156,7 @@ class OCIObjectStorage(Storage):
         if self.querystring_auth:
             return self._get_par_url(key)
 
-        return (
-            f"https://objectstorage.{self.region}.oraclecloud.com"
-            f"/n/{self.namespace}/b/{self.bucket_name}/o/{encoded_key}"
-        )
+        return f"https://objectstorage.{self.region}.oraclecloud.com" f"/n/{self.namespace}/b/{self.bucket_name}/o/{encoded_key}"
 
     def listdir(self, path=""):
         prefix = self._get_key(path)
@@ -201,7 +195,6 @@ class OCIObjectStorage(Storage):
             return parsedate_to_datetime(last_modified)
         return datetime.now()
 
-
     def _get_par_url(self, key):
         expiry = datetime.utcnow() + timedelta(seconds=self.par_expire_seconds)
 
@@ -219,10 +212,7 @@ class OCIObjectStorage(Storage):
             create_preauthenticated_request_details=par_details,
         )
 
-        return (
-            f"https://objectstorage.{self.region}.oraclecloud.com"
-            f"{response.data.access_uri}"
-        )
+        return f"https://objectstorage.{self.region}.oraclecloud.com" f"{response.data.access_uri}"
 
 
 class StaticOCIStorage(OCIObjectStorage):

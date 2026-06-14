@@ -1,7 +1,8 @@
 from django.db import models
 
-from app.settings import choices as settings_choices
 from app.helpdesk import choices as helpdesk_choices
+from app.settings import choices as settings_choices
+
 
 class AppConfig(models.Model):
     app_name = models.CharField(max_length=255, unique=True)
@@ -26,9 +27,10 @@ class AppConfig(models.Model):
     oci_bucket_name = models.CharField(max_length=255, blank=True, null=True)
     oci_bucket_namespace = models.CharField(max_length=255, blank=True, null=True)
     oci_sender_email = models.EmailField(blank=True, null=True)
-    
+
+    step = models.CharField(max_length=20, default=settings_choices.STEP1_OPTION, choices=settings_choices.STEP_CHOICES)
+
     def save(self, *args, **kwargs):
         if not self.pk and AppConfig.objects.exists():
             raise ValueError("Já existe uma configuração de aplicativo. Apenas uma é permitida.")
         return super().save(*args, **kwargs)
-    

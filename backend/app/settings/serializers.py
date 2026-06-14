@@ -7,7 +7,7 @@ class FirstStepConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppConfig
         fields = ["app_name", "logo", "default_language", "default_theme"]
-        
+
 
 class SecondStepConfigSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,9 +20,9 @@ class SecondStepConfigSerializer(serializers.ModelSerializer):
             "auto_close_inactive_tickets",
             "auto_close_after_days",
             "default_ticket_priority",
-            "log_retention_days"
+            "log_retention_days",
         ]
-        
+
 
 class FinalStepConfigSerializer(serializers.ModelSerializer):
     class Meta:
@@ -37,5 +37,11 @@ class FinalStepConfigSerializer(serializers.ModelSerializer):
             "oci_compartment_ocid",
             "oci_bucket_name",
             "oci_bucket_namespace",
-            "oci_sender_email"
+            "oci_sender_email",
         ]
+
+
+class AppConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppConfig
+        fields = "__all__"

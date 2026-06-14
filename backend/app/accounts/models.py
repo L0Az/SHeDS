@@ -1,8 +1,8 @@
-from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.db import models
 
-from app.accounts.managers import UserManager
 from app.accounts import choices as accounts_choices
+from app.accounts.managers import UserManager
 from app.common.models import DefaultModel
 
 
@@ -24,8 +24,8 @@ class User(AbstractBaseUser, PermissionsMixin, DefaultModel):
         permissions = [
             ('change_permissions', 'Can change user permissions'),
         ]
-        
-        
+
+
 class UserNotifications(DefaultModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
     kind = models.CharField(max_length=50, choices=accounts_choices.NOTIFICATION_KIND_CHOICES, default=accounts_choices.NOTIFICATION_KIND_TICKET_STATUS_CHANGED)
