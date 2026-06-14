@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+:root {
+  --sidebar-bg: #0f172a;
+  --sidebar-fg: #94a3b8;
+  --sidebar-active-bg: #1e293b;
+  --sidebar-active-fg: #f1f5f9;
+  --sidebar-hover-bg: #1e293b;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar-bg);
+  --color-accent: var(--accent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  margin: 0;
+}
+
+/* Base UI Dialog animations */
+@keyframes dialog-open {
+  from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes dialog-close {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to { opacity: 0; transform: scale(0.96) translateY(-8px); }
+}
+@keyframes backdrop-open {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes backdrop-close {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+[data-starting-style] .dialog-popup,
+[data-ending-style] .dialog-popup {
+  animation-fill-mode: forwards;
+}
+
+/* Select popup */
+@keyframes select-open {
+  from { opacity: 0; transform: scaleY(0.9); }
+  to { opacity: 1; transform: scaleY(1); }
+}
