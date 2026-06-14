@@ -60,10 +60,10 @@ export function AppSelect({
         </Select.Trigger>
 
         <Select.Portal>
-          <Select.Positioner sideOffset={4}>
+          <Select.Positioner sideOffset={4} style={{ zIndex: 9999 }}>
             <Select.Popup
               className={cn(
-                "z-50 min-w-[var(--anchor-width)] overflow-hidden rounded-lg border border-slate-200",
+                "min-w-[var(--anchor-width)] overflow-hidden rounded-lg border border-slate-200",
                 "bg-white shadow-lg py-1",
                 "origin-[var(--transform-origin)]",
                 "data-[starting-style]:opacity-0 data-[starting-style]:scale-95",
