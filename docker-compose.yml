@@ -2,6 +2,9 @@ version: '3.7'
 
 volumes:
   pg_data: {}
+  passbolt_db_data: {}
+  passbolt_gpg: {}
+  passbolt_images: {}
 
 services:
   db:
@@ -15,3 +18,68 @@ services:
       - "55999:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
+
+  passbolt_db:
+    image: mariadb:10.11
+    restart: always
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "true"
+      MYSQL_DATABASE: passbolt
+      MYSQL_USER: passbolt
+      MYSQL_PASSWORD: passbolt_password
+    volumes:
+      - passbolt_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  passbolt:
+    image: passbolt/passbolt:latest-ce
+    restart: always
+    depends_on:
+      passbolt_db:
+        condition: service_healthy
+    environment:
+      APP_FULL_BASE_URL: http://localhost:8080
+      DATASOURCES_DEFAULT_HOST: passbolt_db
+      DATASOURCES_DEFAULT_USERNAME: passbolt
+      DATASOURCES_DEFAULT_PASSWORD: passbolt_password
+      DATASOURCES_DEFAULT_DATABASE: passbolt
+      EMAIL_DEFAULT_FROM: passbolt@sheds.local
+      EMAIL_TRANSPORT_DEFAULT_CLASS_NAME: Debug
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - passbolt_gpg:/etc/passbolt/gpg
+      - passbolt_images:/usr/share/php/passbolt/webroot/img/public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost/auth/verify.json | grep -q 'success' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  passbolt_init:
+    image: passbolt/passbolt:latest-ce
+    restart: on-failure
+    depends_on:
+      passbolt:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/passbolt_init.sh"]
+    environment:
+      APP_FULL_BASE_URL: http://localhost:8080
+      DATASOURCES_DEFAULT_HOST: passbolt_db
+      DATASOURCES_DEFAULT_USERNAME: passbolt
+      DATASOURCES_DEFAULT_PASSWORD: passbolt_password
+      DATASOURCES_DEFAULT_DATABASE: passbolt
+      EMAIL_DEFAULT_FROM: passbolt@sheds.local
+      EMAIL_TRANSPORT_DEFAULT_CLASS_NAME: Debug
+      PASSBOLT_ADMIN_EMAIL: ${PASSBOLT_ADMIN_EMAIL}
+      PASSBOLT_ADMIN_FIRST_NAME: ${PASSBOLT_ADMIN_FIRST_NAME:-Admin}
+      PASSBOLT_ADMIN_LAST_NAME: ${PASSBOLT_ADMIN_LAST_NAME:-User}
+      PASSBOLT_GPG_PUBLIC_KEY: ${PASSBOLT_GPG_PUBLIC_KEY}
+    volumes:
+      - ./scripts/passbolt_init.sh:/passbolt_init.sh:ro
