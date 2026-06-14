@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from app.accounts import choices as accounts_choices
 from app.helpdesk.models import Department, Category, Ticket, TicketAttachment, TicketComment
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -17,13 +18,27 @@ class CategorySerializer(serializers.ModelSerializer):
 class TicketAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketAttachment
-        fields = ["id", "ticket", "file", "filename"]
+        fields = ["id", "ticket", "file", "filename", "content_type", "size_bytes", "comment"]
         
     
 class TicketCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketComment
         fields = ["id", "ticket", "author", "body", "is_private"]
+        
+    def create(self, validated_data):
+        author = self.context["request"].user
+        validated_data["author"] = author
+        comment = super().create(validated_data)
+        
+        return comment
+        
+    def validate(self, data):
+        user = self.context["request"].user
+        if user.user_type == accounts_choices.CUSTOMER_USER_TYPE and data.get("is_private", False):
+            raise serializers.ValidationError("Clients cannot create private comments.")
+        return data
+        
         
     
 class TicketSerializer(serializers.ModelSerializer):

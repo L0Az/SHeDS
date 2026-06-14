@@ -4,7 +4,7 @@ from rest_framework.response import Response
 
 from app.accounts.permissions import AdminOrModelPermissions
 from app.helpdesk.models import Category, Department, Ticket
-from app.helpdesk.serializers import CategorySerializer, DepartmentSerializer, TicketSerializer
+from app.helpdesk.serializers import CategorySerializer, DepartmentSerializer, TicketAttachmentSerializer, TicketCommentSerializer, TicketSerializer
 from app.helpdesk.services.department import get_department
 from app.helpdesk.services.category import get_category
 from app.helpdesk.services.ticket import get_ticket
@@ -129,3 +129,30 @@ class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+class CommentInTicketView(generics.CreateAPIView):
+    serializer_class = TicketCommentSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        ticket_id = self.kwargs.get("ticket_pk")
+        ticket = get_ticket(ticket_id)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save(author=request.user, ticket=ticket)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        
+class AttachmentInTicketView(generics.CreateAPIView):
+    serializer_class = TicketAttachmentSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        ticket_id = self.kwargs.get("ticket_pk")
+        ticket = get_ticket(ticket_id)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer["uploaded_by"] = request.user
+            serializer.save(ticket=ticket)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
