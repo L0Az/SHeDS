@@ -1,48 +1,105 @@
-version: '3.7'
+version: '3.8'
 
 volumes:
-  pg_data: {}
+  pg_data:
+  caddy_data:
+  caddy_config:
 
 services:
   db:
-    image: postgres:16.2
+    image: postgres:16-alpine
     restart: always
     environment:
       POSTGRES_DB: ${DB_NAME}
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
-    ports:
-      - "${DB_PORT:-56000}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
       retries: 5
 
-  app:
-    image: ghcr.io/${GITHUB_REPOSITORY}:latest
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile
     restart: always
-    command: gunicorn --bind 0.0.0.0:9000 --workers 3 config.wsgi:application
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             uvicorn config.asgi:application --host 0.0.0.0 --port 9000 --workers 3"
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_LOCATION: redis:6379/1
+      FRONTEND_URL: https://${DOMAIN}
+      ALLOWED_HOSTS: ${DOMAIN},backend
     depends_on:
       db:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+
+  celery:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile
+    restart: always
+    command: celery -A config worker -l info --concurrency=4
     env_file:
       - .env
-    volumes:
-      - ./oci_api_key.pem:/app/oci_api_key.pem:ro
-    ports:
-      - "9000:9000"
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - CACHE_LOCATION=redis:6379/0
-      - DJANGO_SETTINGS_MODULE=config.settings.production
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_LOCATION: redis:6379/1
+      FRONTEND_URL: https://${DOMAIN}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  redis:
-    image: redis:7.0-alpine
+  frontend:
+    build:
+      context: ./frontend
     restart: always
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+      DJANGO_INTERNAL_URL: http://backend:9000
+    depends_on:
+      - backend
 
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+    depends_on:
+      - backend
+      - frontend

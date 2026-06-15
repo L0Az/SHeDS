@@ -49,7 +49,10 @@ DATABASES = {
 
 STATIC_ROOT = "/static/"
 
-CORS_ALLOWED_ORIGINS = []
+_DOMAIN = config("DOMAIN", default="")
+CORS_ALLOWED_ORIGINS = [f"https://{_DOMAIN}"] if _DOMAIN else []
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [f"https://{_DOMAIN}"] if _DOMAIN else []
 
 CACHES = {
     "default": {
@@ -64,4 +67,3 @@ CACHES = {
     }
 }
 
-CSRF_TRUSTED_ORIGINS = []

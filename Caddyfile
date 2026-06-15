@@ -1,0 +1,12 @@
+{$DOMAIN} {
+    # Django API and admin panel
+    @backend path /v1/* /admin/*
+    handle @backend {
+        reverse_proxy backend:9000
+    }
+
+    # Next.js frontend (everything else)
+    handle {
+        reverse_proxy frontend:3000
+    }
+}
