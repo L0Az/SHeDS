@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Trash2, Save, Upload, Paperclip } from "lucide-react";
+import { Trash2, Save, Upload, Paperclip, Lock, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { AppSelect } from "@/components/ui/select";
@@ -14,7 +14,7 @@ import { AppDialog } from "@/components/ui/dialog";
 import { formatDateTime, formatBytes, extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
-import type { Ticket, Department, Category, TicketAttachment, PaginatedResponse } from "@/types";
+import type { Ticket, Department, Category, TicketAttachment, TicketComment, PaginatedResponse } from "@/types";
 
 const schema = z.object({
   title: z.string().min(1),
@@ -45,6 +45,106 @@ const priorityOptions = [
   { value: "medium", label: "Medium" },
   { value: "low", label: "Low" },
 ];
+
+function CommentsSection({ ticketId, role }: { ticketId: number; role: string }) {
+  const { toast } = useToast();
+  const canManage = role === "admin" || role === "technician";
+  const [comments, setComments] = useState<TicketComment[]>([]);
+  const [body, setBody] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    api
+      .get<PaginatedResponse<TicketComment>>(`/helpdesk/tickets/${ticketId}/comments/`, { limit: 200 })
+      .then((res) => setComments(res.results))
+      .catch(() => {});
+  }, [ticketId]);
+
+  const handleSubmit = async () => {
+    if (!body.trim()) return;
+    setSubmitting(true);
+    try {
+      const comment = await api.post<TicketComment>(`/helpdesk/tickets/${ticketId}/comments/`, {
+        body: body.trim(),
+        is_private: isPrivate,
+      });
+      setComments((prev) => [...prev, comment]);
+      setBody("");
+      setIsPrivate(false);
+      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+    } catch (err) {
+      toast("error", extractApiError(err));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {comments.length === 0 ? (
+        <p className="text-sm text-slate-400 italic">No comments yet.</p>
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {comments.map((c) => (
+            <li
+              key={c.id}
+              className={`rounded-lg border px-4 py-3 text-sm ${
+                c.is_private
+                  ? "border-amber-200 bg-amber-50"
+                  : "border-slate-100 bg-slate-50"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className="font-medium text-slate-800">{c.author_name}</span>
+                <div className="flex items-center gap-2">
+                  {c.is_private && (
+                    <span className="flex items-center gap-1 text-xs text-amber-600">
+                      <Lock className="h-3 w-3" /> Private
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-400">{formatDateTime(c.created_at)}</span>
+                </div>
+              </div>
+              <p className="text-slate-700 whitespace-pre-wrap">{c.body}</p>
+            </li>
+          ))}
+          <div ref={bottomRef} />
+        </ul>
+      )}
+
+      <div className="flex flex-col gap-2">
+        <Textarea
+          placeholder="Write a comment…"
+          rows={3}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+          }}
+        />
+        <div className="flex items-center justify-between gap-2">
+          {canManage && (
+            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                className="rounded"
+              />
+              Private (internal only)
+            </label>
+          )}
+          {!canManage && <span />}
+          <Button type="button" size="sm" loading={submitting} disabled={!body.trim()} onClick={handleSubmit}>
+            <Send className="h-4 w-4" /> Post
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function TicketDetailClient({ ticket, departments, categories, role }: TicketDetailClientProps) {
   const router = useRouter();
@@ -209,8 +309,8 @@ export function TicketDetailClient({ ticket, departments, categories, role }: Ti
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-6">
-            <h2 className="mb-2 font-semibold text-slate-800">Comments</h2>
-            <p className="text-sm text-slate-500 italic">Comments coming soon.</p>
+            <h2 className="mb-4 font-semibold text-slate-800">Comments</h2>
+            <CommentsSection ticketId={ticket.id} role={role} />
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-6">

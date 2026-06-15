@@ -25,20 +25,24 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
 
 
 class TicketCommentSerializer(serializers.ModelSerializer):
+    author_name = serializers.SerializerMethodField()
+
     class Meta:
         model = TicketComment
-        fields = ["id", "ticket", "author", "body", "is_private"]
+        fields = ["id", "ticket", "author", "author_name", "body", "is_private", "created_at"]
+        read_only_fields = ["id", "ticket", "author", "author_name", "created_at"]
+
+    def get_author_name(self, obj) -> str:
+        return obj.author.name or obj.author.email or ""
 
     def create(self, validated_data):
         author = self.context["request"].user
         validated_data["author"] = author
-        comment = super().create(validated_data)
-
-        return comment
+        return super().create(validated_data)
 
     def validate(self, data):
         user = self.context["request"].user
-        if user.user_type == accounts_choices.CUSTOMER_USER_TYPE and data.get("is_private", False):
+        if user.type == accounts_choices.CUSTOMER_USER_TYPE and data.get("is_private", False):
             raise serializers.ValidationError("Clients cannot create private comments.")
         return data
 
@@ -48,4 +52,4 @@ class TicketSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Ticket
-        fields = ["id", "title", "description", "category", "department", "customer", "assigned_to", "status", "priority", "closed_at", "created_at"]
+        fields = ["id", "title", "description", "category", "department", "customer", "assigned_to", "status", "priority", "closed_at", "created_at", "updated_at"]

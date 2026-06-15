@@ -18,19 +18,20 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
 
+  let configStatus: boolean | null = null;
   try {
     const { config_status } = await serverApi.get<{ config_status: boolean }>("/settings/verify/");
-
-    if (!config_status && !pathname.startsWith(SETUP_PATH)) {
-      redirect(SETUP_PATH);
-    }
-
-    if (config_status && pathname.startsWith(SETUP_PATH)) {
-      redirect("/dashboard");
-    }
+    configStatus = config_status;
   } catch {
-    // If the verify call fails entirely, let the request through rather than
-    // blocking the user — they will see an error on the target page.
+    // verify call failed — treat as unconfigured so the user is sent to setup
+    configStatus = false;
+  }
+
+  if (configStatus === false && !pathname.startsWith(SETUP_PATH)) {
+    redirect(SETUP_PATH);
+  }
+  if (configStatus === true && pathname.startsWith(SETUP_PATH)) {
+    redirect("/dashboard");
   }
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "SHeDS";

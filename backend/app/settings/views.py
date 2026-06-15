@@ -34,7 +34,7 @@ class FirstStepConfigView(generics.CreateAPIView):
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer['step'].save(settings_choices.STEP2_OPTION)
+            serializer.save(step=settings_choices.STEP2_OPTION)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -49,7 +49,7 @@ class SecondStepConfigView(generics.UpdateAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
-            serializer['step'].save(settings_choices.STEP3_OPTION)
+            serializer.save(step=settings_choices.STEP3_OPTION)
             return Response(serializer.data)
 
 
@@ -64,7 +64,7 @@ class FinalStepConfigView(generics.UpdateAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
-            serializer['step'].save(settings_choices.FINAL_STEP_OPTION)
+            serializer.save(step=settings_choices.FINAL_STEP_OPTION)
             self._sync_to_passbolt(serializer.instance)
             return Response(serializer.data)
 

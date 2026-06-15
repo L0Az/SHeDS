@@ -64,10 +64,10 @@ export interface TicketComment {
   id: number;
   ticket: number;
   author: number;
+  author_name: string;
   body: string;
   is_private: boolean;
   created_at: string;
-  updated_at: string;
 }
 
 export interface TicketAttachment {
