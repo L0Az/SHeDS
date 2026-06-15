@@ -75,6 +75,27 @@ services:
       redis:
         condition: service_healthy
 
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile
+    restart: always
+    command: celery -A config beat -l info --scheduler celery.beat.PersistentScheduler
+    env_file:
+      - .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DB_HOST: db
+      DB_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_LOCATION: redis:6379/1
+      FRONTEND_URL: https://${DOMAIN}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

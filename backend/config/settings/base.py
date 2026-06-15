@@ -15,6 +15,7 @@ import sys
 from datetime import timedelta
 
 import sentry_sdk
+from celery.schedules import crontab
 from decouple import config
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -227,12 +228,23 @@ SCHEDULED_TASKS = []
 ASYNC_TASKS = []
 
 # Celery
+
 REDIS_URL = config("REDIS_URL", default="redis://127.0.0.1:6379/0")
 CELERY_BROKER_URL = REDIS_URL
 CELERY_RESULT_BACKEND = REDIS_URL
 CELERY_TASK_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_RESULT_SERIALIZER = "json"
+CELERY_BEAT_SCHEDULE = {
+    "close-inactive-tickets": {
+        "task": "app.helpdesk.tasks.close_inactive_tickets",
+        "schedule": crontab(hour=2, minute=0),
+    },
+    "purge-old-history": {
+        "task": "app.helpdesk.tasks.purge_old_history",
+        "schedule": crontab(hour=3, minute=0),
+    },
+}
 
 # Email
 EMAIL_BACKEND = config("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")

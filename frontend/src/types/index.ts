@@ -91,6 +91,20 @@ export interface TicketAttachment {
   updated_at: string;
 }
 
+export interface TicketHistoryChange {
+  field: string;
+  old: string | null;
+  new: string | null;
+}
+
+export interface TicketHistory {
+  history_id: number;
+  date: string;
+  user: string | null;
+  type: "+" | "~" | "-";
+  changes: TicketHistoryChange[];
+}
+
 export interface UserNotification {
   id: number;
   ticket: number | null;

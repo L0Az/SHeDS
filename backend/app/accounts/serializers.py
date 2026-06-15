@@ -90,7 +90,6 @@ class UserPreferenceSerializer(serializers.ModelSerializer):
 
 
 class UserPermissionSerializer(serializers.Serializer):
-    user_id = serializers.IntegerField()
     permissions = serializers.ListField(
         child=serializers.ChoiceField(choices=VALID_PERMISSIONS),
         min_length=1,

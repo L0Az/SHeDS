@@ -28,10 +28,6 @@ def _public_url(object_key: str) -> str:
 
 
 def presign_upload(filename: str, expires_seconds: int = 3600) -> dict:
-    """
-    Creates an OCI PAR (ObjectWrite) for direct browser-to-OCI upload.
-    Returns upload_url (PUT target) and file_url (public read URL after upload).
-    """
     import oci
 
     region = getattr(settings, "OCI_REGION", "")
@@ -59,7 +55,6 @@ def presign_upload(filename: str, expires_seconds: int = 3600) -> dict:
 
 
 def delete_by_url(file_url: str) -> None:
-    """Deletes the OCI object identified by its public URL. Silently ignores errors."""
     region = getattr(settings, "OCI_REGION", "")
     namespace = getattr(settings, "OCI_BUCKET_NAMESPACE", "")
     bucket = getattr(settings, "OCI_BUCKET_NAME", "")
@@ -76,8 +71,6 @@ def delete_by_url(file_url: str) -> None:
     object_key = unquote(file_url[len(prefix) :])
 
     try:
-        import oci
-
         _oci_client().delete_object(
             namespace_name=namespace,
             bucket_name=bucket,

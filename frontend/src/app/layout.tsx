@@ -29,7 +29,7 @@ export default async function RootLayout({
 
   return (
     <html lang={lang} data-theme={theme} className="h-full antialiased">
-      <body className="h-full bg-slate-50">
+      <body className="h-full bg-slate-50" suppressHydrationWarning>
         <ToastProvider>{children}</ToastProvider>
       </body>
     </html>

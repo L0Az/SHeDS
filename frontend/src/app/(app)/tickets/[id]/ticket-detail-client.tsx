@@ -15,7 +15,7 @@ import { formatDateTime, formatBytes, extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n/context";
-import type { Assignee, Ticket, Department, Category, TicketAttachment, TicketComment, PaginatedResponse } from "@/types";
+import type { Assignee, Ticket, Department, Category, TicketAttachment, TicketComment, TicketHistory, PaginatedResponse } from "@/types";
 
 const schema = z.object({
   title: z.string().min(1),
@@ -132,6 +132,89 @@ function CommentsSection({ ticketId, role }: { ticketId: number; role: string })
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function HistorySection({ ticketId }: { ticketId: number }) {
+  const t = useT();
+  const [history, setHistory] = useState<TicketHistory[]>([]);
+
+  useEffect(() => {
+    api
+      .get<TicketHistory[]>(`/helpdesk/tickets/${ticketId}/history/`)
+      .then(setHistory)
+      .catch(() => {});
+  }, [ticketId]);
+
+  const FIELD_LABELS: Record<string, string> = {
+    title: t("ticket_history_field_title"),
+    description: t("ticket_history_field_description"),
+    status: t("ticket_history_field_status"),
+    priority: t("ticket_history_field_priority"),
+    assigned_to_id: t("ticket_history_field_assigned_to_id"),
+    category_id: t("ticket_history_field_category_id"),
+    department_id: t("ticket_history_field_department_id"),
+    closed_at: t("ticket_history_field_closed_at"),
+  };
+
+  const STATUS_LABELS: Record<string, string> = {
+    open: t("status_open"),
+    in_progress: t("status_in_progress"),
+    in_development: t("status_in_development"),
+    closed: t("status_closed"),
+  };
+
+  const PRIORITY_LABELS: Record<string, string> = {
+    high: t("priority_high"),
+    medium: t("priority_medium"),
+    low: t("priority_low"),
+  };
+
+  const displayValue = (field: string, value: string | null) => {
+    if (value === null) return "—";
+    if (field === "status") return STATUS_LABELS[value] ?? value;
+    if (field === "priority") return PRIORITY_LABELS[value] ?? value;
+    if (field === "description") return value.length > 40 ? `${value.slice(0, 40)}…` : value;
+    return value;
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {history.length === 0 ? (
+        <p className="text-sm text-slate-400 italic">{t("ticket_no_history")}</p>
+      ) : (
+        <ol className="relative border-l border-slate-200 flex flex-col gap-4 ml-2">
+          {history.map((entry) => (
+            <li key={entry.history_id} className="ml-4">
+              <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full border-2 border-white bg-indigo-400" />
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1">
+                <span className="text-xs text-slate-400">{formatDateTime(entry.date)}</span>
+                {entry.user && (
+                  <span className="text-xs text-slate-500">
+                    {t("ticket_history_by")} <span className="font-medium text-slate-700">{entry.user}</span>
+                  </span>
+                )}
+              </div>
+              {entry.type === "+" ? (
+                <p className="text-sm text-slate-600">{t("ticket_history_created")}</p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {entry.changes.map((c, idx) => (
+                    <li key={idx} className="text-sm text-slate-600">
+                      <span className="font-medium text-slate-800">{FIELD_LABELS[c.field] ?? c.field}</span>
+                      {": "}
+                      <span className="line-through text-slate-400">{displayValue(c.field, c.old)}</span>
+                      {" → "}
+                      <span className="text-slate-700">{displayValue(c.field, c.new)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
@@ -305,6 +388,13 @@ export function TicketDetailClient({ ticket, departments, categories, assignees,
             <h2 className="mb-4 font-semibold text-slate-800">{t("ticket_comments")}</h2>
             <CommentsSection ticketId={ticket.id} role={role} />
           </div>
+
+          {canManage && (
+            <div className="rounded-xl border border-slate-200 bg-white p-6">
+              <h2 className="mb-4 font-semibold text-slate-800">{t("ticket_history")}</h2>
+              <HistorySection ticketId={ticket.id} />
+            </div>
+          )}
 
           <div className="rounded-xl border border-slate-200 bg-white p-6">
             <div className="flex items-center justify-between mb-4">

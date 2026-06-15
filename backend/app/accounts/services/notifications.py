@@ -39,7 +39,8 @@ def _email_html(app_name, heading, body_html, ticket_url):
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;
+        box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 
           <!-- Header -->
           <tr>
@@ -56,7 +57,8 @@ def _email_html(app_name, heading, body_html, ticket_url):
               <div style="color:#475569;font-size:15px;line-height:1.75;">{body_html}</div>
               <div style="margin-top:32px;">
                 <a href="{ticket_url}"
-                   style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;">
+                   style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;
+                   font-weight:600;">
                   View Ticket &rarr;
                 </a>
               </div>

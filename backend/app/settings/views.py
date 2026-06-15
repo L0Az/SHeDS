@@ -9,7 +9,13 @@ from rest_framework.response import Response
 from app.accounts.permissions import IsAdmin
 from app.settings import choices as settings_choices
 from app.settings.models import AppConfig
-from app.settings.serializers import AppConfigSerializer, FinalStepConfigSerializer, FirstStepConfigSerializer, PublicAppConfigSerializer, SecondStepConfigSerializer
+from app.settings.serializers import (
+    AppConfigSerializer,
+    FinalStepConfigSerializer,
+    FirstStepConfigSerializer,
+    PublicAppConfigSerializer,
+    SecondStepConfigSerializer,
+)
 
 logger = logging.getLogger(__name__)
 

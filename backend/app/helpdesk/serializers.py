@@ -1,7 +1,7 @@
-from app.accounts.models import User
 from rest_framework import serializers
 
 from app.accounts import choices as accounts_choices
+from app.accounts.models import User
 from app.helpdesk.models import Category, Department, Ticket, TicketAttachment, TicketComment
 
 
@@ -59,7 +59,21 @@ class TicketSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ticket
-        fields = ["id", "title", "description", "category", "department", "customer", "assigned_to", "assigned_to_name", "status", "priority", "closed_at", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "title",
+            "description",
+            "category",
+            "department",
+            "customer",
+            "assigned_to",
+            "assigned_to_name",
+            "status",
+            "priority",
+            "closed_at",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["id", "customer", "assigned_to_name", "closed_at", "created_at", "updated_at"]
 
     def get_assigned_to_name(self, obj) -> str | None:
@@ -84,3 +98,65 @@ class TicketSerializer(serializers.ModelSerializer):
             if value.department_id != user.department_id:
                 raise serializers.ValidationError("Technicians can only assign technicians from their own department.")
         return value
+
+
+_TRACKED_FIELDS = ["title", "description", "status", "priority", "assigned_to_id", "category_id", "department_id", "closed_at"]
+
+
+def serialize_ticket_history(history_qs):
+    from app.accounts.models import User
+
+    entries = list(history_qs.select_related("history_user").order_by("-history_date"))
+
+    user_ids, category_ids, department_ids = set(), set(), set()
+    for entry in entries:
+        if entry.assigned_to_id:
+            user_ids.add(entry.assigned_to_id)
+        if entry.category_id:
+            category_ids.add(entry.category_id)
+        if entry.department_id:
+            department_ids.add(entry.department_id)
+
+    user_names = {u.id: u.name or u.email or str(u.id) for u in User.objects.filter(id__in=user_ids)}
+    category_names = {c.id: c.name for c in Category.objects.filter(id__in=category_ids)}
+    department_names = {d.id: d.name for d in Department.objects.filter(id__in=department_ids)}
+
+    fk_lookup = {
+        "assigned_to_id": user_names,
+        "category_id": category_names,
+        "department_id": department_names,
+    }
+
+    def fmt(field, val):
+        if val is None:
+            return None
+        if field in fk_lookup:
+            return fk_lookup[field].get(val, str(val))
+        return str(val)
+
+    result = []
+    for i, entry in enumerate(entries):
+        prev = entries[i + 1] if i + 1 < len(entries) else None
+        changes = []
+        if prev:
+            for field in _TRACKED_FIELDS:
+                old_val = getattr(prev, field, None)
+                new_val = getattr(entry, field, None)
+                if old_val != new_val:
+                    changes.append(
+                        {
+                            "field": field,
+                            "old": fmt(field, old_val),
+                            "new": fmt(field, new_val),
+                        }
+                    )
+        result.append(
+            {
+                "history_id": entry.history_id,
+                "date": entry.history_date,
+                "user": (entry.history_user.name or entry.history_user.email) if entry.history_user else None,
+                "type": entry.history_type,
+                "changes": changes,
+            }
+        )
+    return result

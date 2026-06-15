@@ -1,6 +1,6 @@
+from django.contrib.auth.models import Permission
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from guardian.shortcuts import assign_perm, remove_perm
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -10,7 +10,15 @@ from rest_framework.response import Response
 from app.accounts.filters import UserFilter
 from app.accounts.models import User, UserNotifications
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
-from app.accounts.serializers import VALID_PERMISSIONS, CustomerRegisterSerializer, UserMeSerializer, UserNotificationSerializer, UserPermissionSerializer, UserPreferenceSerializer, UserSerializer
+from app.accounts.serializers import (
+    VALID_PERMISSIONS,
+    CustomerRegisterSerializer,
+    UserMeSerializer,
+    UserNotificationSerializer,
+    UserPermissionSerializer,
+    UserPreferenceSerializer,
+    UserSerializer,
+)
 from app.accounts.services.user import get_user
 from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
@@ -73,18 +81,16 @@ class UserPermissionsView(generics.GenericAPIView):
         target = get_user(pk)
         serializer = UserPermissionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        grantee = get_user(serializer.validated_data["user_id"])
-        for perm in serializer.validated_data["permissions"]:
-            assign_perm(perm, grantee, target)
+        perms = Permission.objects.filter(codename__in=serializer.validated_data["permissions"])
+        target.user_permissions.add(*perms)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def delete(self, request, pk, **kwargs):
         target = get_user(pk)
         serializer = UserPermissionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        grantee = get_user(serializer.validated_data["user_id"])
-        for perm in serializer.validated_data["permissions"]:
-            remove_perm(perm, grantee, target)
+        perms = Permission.objects.filter(codename__in=serializer.validated_data["permissions"])
+        target.user_permissions.remove(*perms)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -128,8 +134,8 @@ class CustomerRegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        from app.settings.models import AppConfig
         from app.settings import choices as settings_choices
+        from app.settings.models import AppConfig
 
         config = AppConfig.objects.filter(step=settings_choices.FINAL_STEP_OPTION).first()
         if not config or not config.allow_customer_signup:

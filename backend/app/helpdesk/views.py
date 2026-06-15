@@ -11,7 +11,15 @@ from app.accounts.services.notifications import dispatch_assignment_changed, dis
 from app.common.order import OrderMixin
 from app.helpdesk.filters import CategoryFilter, DepartmentFilter, TicketFilter
 from app.helpdesk.models import Category, Department, Ticket, TicketAttachment
-from app.helpdesk.serializers import AssigneeSerializer, CategorySerializer, DepartmentSerializer, TicketAttachmentSerializer, TicketCommentSerializer, TicketSerializer
+from app.helpdesk.serializers import (
+    AssigneeSerializer,
+    CategorySerializer,
+    DepartmentSerializer,
+    TicketAttachmentSerializer,
+    TicketCommentSerializer,
+    TicketSerializer,
+    serialize_ticket_history,
+)
 from app.helpdesk.services.attachment import delete_by_url, presign_upload
 from app.helpdesk.services.category import get_category
 from app.helpdesk.services.department import get_department
@@ -49,6 +57,9 @@ class DepartmentView(OrderMixin, generics.ListCreateAPIView):
 
 class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DepartmentSerializer
+
+    def get_queryset(self):
+        return Department.objects.all()
 
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH", "DELETE"]:
@@ -96,6 +107,9 @@ class CategoryView(OrderMixin, generics.ListCreateAPIView):
 
 class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = CategorySerializer
+
+    def get_queryset(self):
+        return Category.objects.all()
 
     def get_permissions(self):
         if self.request.method in ["PUT", "PATCH", "DELETE"]:
@@ -147,6 +161,9 @@ class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = TicketSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        return Ticket.objects.all()
+
     def get_object(self):
         ticket = get_ticket(self.kwargs.get("pk"))
         _assert_ticket_access(self.request.user, ticket)
@@ -170,6 +187,19 @@ class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance = self.get_object()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TicketHistoryView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, ticket_pk, **kwargs):
+        user = request.user
+        if user.type == "customer":
+            raise PermissionDenied()
+        ticket = get_ticket(ticket_pk)
+        if user.type == "technician" and ticket.department_id != user.department_id:
+            raise PermissionDenied()
+        return Response(serialize_ticket_history(ticket.history.all()))
 
 
 class CommentInTicketView(generics.ListCreateAPIView):
