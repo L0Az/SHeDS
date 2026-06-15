@@ -28,6 +28,7 @@ class User(AbstractBaseUser, PermissionsMixin, DefaultModel):
 
 class UserNotifications(DefaultModel):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    ticket = models.ForeignKey("helpdesk.Ticket", on_delete=models.SET_NULL, related_name="notifications", blank=True, null=True)
     kind = models.CharField(max_length=50, choices=accounts_choices.NOTIFICATION_KIND_CHOICES, default=accounts_choices.NOTIFICATION_KIND_TICKET_STATUS_CHANGED)
     content = models.TextField()
     read_at = models.DateTimeField(blank=True, null=True)

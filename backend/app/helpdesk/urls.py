@@ -23,5 +23,7 @@ urlpatterns = [
     re_path(r"^(?P<version>(v1))/helpdesk/tickets/(?P<ticket_pk>\d+)/comments/$", CommentInTicketView.as_view(), name="ticket-comment-create"),
     re_path(r"^(?P<version>(v1))/helpdesk/tickets/(?P<ticket_pk>\d+)/attachments/presign/$", PresignAttachmentView.as_view(), name="ticket-attachment-presign"),
     re_path(r"^(?P<version>(v1))/helpdesk/tickets/(?P<ticket_pk>\d+)/attachments/$", AttachmentInTicketView.as_view(), name="ticket-attachment-list-create"),
-    re_path(r"^(?P<version>(v1))/helpdesk/tickets/(?P<ticket_pk>\d+)/attachments/(?P<pk>\d+)/$", AttachmentDetailView.as_view(), name="ticket-attachment-detail"),
+    re_path(
+        r"^(?P<version>(v1))/helpdesk/tickets/(?P<ticket_pk>\d+)/attachments/(?P<pk>\d+)/$", AttachmentDetailView.as_view(), name="ticket-attachment-detail"
+    ),
 ]

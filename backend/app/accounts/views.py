@@ -8,9 +8,9 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from app.accounts.filters import UserFilter
-from app.accounts.models import User
+from app.accounts.models import User, UserNotifications
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
-from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserPermissionSerializer, UserSerializer
+from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserNotificationSerializer, UserPermissionSerializer, UserSerializer
 from app.accounts.services.user import get_user
 from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
@@ -111,3 +111,33 @@ class UserMeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = UserNotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return UserNotifications.objects.filter(user=self.request.user).order_by("-created_at")
+
+
+class NotificationMarkReadView(generics.UpdateAPIView):
+    serializer_class = UserNotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return generics.get_object_or_404(UserNotifications, pk=self.kwargs["pk"], user=self.request.user)
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        instance.read_at = timezone.now()
+        instance.save(update_fields=["read_at"])
+        return Response(self.get_serializer(instance).data)
+
+
+class NotificationMarkAllReadView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        UserNotifications.objects.filter(user=request.user, read_at__isnull=True).update(read_at=timezone.now())
+        return Response(status=status.HTTP_204_NO_CONTENT)

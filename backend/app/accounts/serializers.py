@@ -2,7 +2,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from app.accounts import choices as account_choices
-from app.accounts.models import User
+from app.accounts.models import User, UserNotifications
 from app.helpdesk.models import Department
 
 
@@ -84,3 +84,10 @@ class UserPermissionSerializer(serializers.Serializer):
         child=serializers.ChoiceField(choices=VALID_PERMISSIONS),
         min_length=1,
     )
+
+
+class UserNotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserNotifications
+        fields = ["id", "ticket", "kind", "content", "read_at", "created_at"]
+        read_only_fields = ["id", "ticket", "kind", "content", "created_at"]

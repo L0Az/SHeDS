@@ -83,6 +83,15 @@ export interface TicketAttachment {
   updated_at: string;
 }
 
+export interface UserNotification {
+  id: number;
+  ticket: number | null;
+  kind: string;
+  content: string;
+  read_at: string | null;
+  created_at: string;
+}
+
 export interface AppConfig {
   id: number;
   app_name: string;

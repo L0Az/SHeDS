@@ -7,6 +7,7 @@ from django.conf import settings
 
 def _oci_client():
     from config.storage import _make_client
+
     return _make_client()
 
 
@@ -72,10 +73,11 @@ def delete_by_url(file_url: str) -> None:
     if not file_url.startswith(prefix):
         return
 
-    object_key = unquote(file_url[len(prefix):])
+    object_key = unquote(file_url[len(prefix) :])
 
     try:
         import oci
+
         _oci_client().delete_object(
             namespace_name=namespace,
             bucket_name=bucket,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,9 +16,12 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-export function LoginForm() {
+interface LoginFormProps {
+  callbackUrl?: string;
+}
+
+export function LoginForm({ callbackUrl }: LoginFormProps) {
   const router = useRouter();
-  const params = useSearchParams();
   const [error, setError] = useState("");
 
   const {
@@ -39,8 +42,7 @@ export function LoginForm() {
       setError(body.detail ?? extractApiError(body));
       return;
     }
-    const cb = params.get("callbackUrl") ?? "/dashboard";
-    router.push(cb);
+    router.push(callbackUrl ?? "/dashboard");
     router.refresh();
   };
 
@@ -55,7 +57,7 @@ export function LoginForm() {
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit(onSubmit)} method="post" className="flex flex-col gap-4">
           <Input
             label="Email"
             type="email"

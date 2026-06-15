@@ -1,3 +1,4 @@
+from app.accounts.models import User
 from rest_framework import serializers
 
 from app.accounts import choices as accounts_choices
@@ -43,6 +44,8 @@ class TicketCommentSerializer(serializers.ModelSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
+    customer = serializers.PrimaryKeyRelatedField(required=False, queryset=User.objects.filter(type=accounts_choices.CUSTOMER_USER_TYPE))
+    
     class Meta:
         model = Ticket
         fields = ["id", "title", "description", "category", "department", "customer", "assigned_to", "status", "priority", "closed_at", "created_at"]

@@ -7,6 +7,12 @@ volumes:
   passbolt_images: {}
 
 services:
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
   db:
     image: postgres:16.2
     restart: always

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from app.accounts.permissions import AdminOrModelPermissions
+from app.accounts.services.notifications import dispatch_assignment_changed, dispatch_comment_added, dispatch_status_changed
 from app.common.order import OrderMixin
 from app.helpdesk.filters import CategoryFilter, DepartmentFilter, TicketFilter
 from app.helpdesk.models import Category, Department, Ticket, TicketAttachment
@@ -137,9 +138,16 @@ class TicketDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
+        old_status = instance.status
+        old_assigned_id = instance.assigned_to_id
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
+            instance.refresh_from_db()
+            if instance.status != old_status:
+                dispatch_status_changed(instance, old_status, instance.status)
+            if instance.assigned_to_id != old_assigned_id:
+                dispatch_assignment_changed(instance, instance.assigned_to)
             return Response(serializer.data)
 
     def delete(self, request, *args, **kwargs):
@@ -157,7 +165,8 @@ class CommentInTicketView(generics.CreateAPIView):
         ticket = get_ticket(ticket_id)
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer.save(author=request.user, ticket=ticket)
+            comment = serializer.save(author=request.user, ticket=ticket)
+            dispatch_comment_added(ticket, comment)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
