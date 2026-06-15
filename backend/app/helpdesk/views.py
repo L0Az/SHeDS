@@ -1,8 +1,12 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from app.accounts.permissions import AdminOrModelPermissions
+from app.common.order import OrderMixin
+from app.helpdesk.filters import CategoryFilter, DepartmentFilter, TicketFilter
 from app.helpdesk.models import Category, Department, Ticket
 from app.helpdesk.serializers import CategorySerializer, DepartmentSerializer, TicketAttachmentSerializer, TicketCommentSerializer, TicketSerializer
 from app.helpdesk.services.category import get_category
@@ -10,8 +14,12 @@ from app.helpdesk.services.department import get_department
 from app.helpdesk.services.ticket import get_ticket
 
 
-class DepartmentView(generics.ListCreateAPIView):
+class DepartmentView(OrderMixin, generics.ListCreateAPIView):
     serializer_class = DepartmentSerializer
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
+    filterset_class = DepartmentFilter
+    search_fields = ["name", "description"]
+    ordering_fields = ["id", "name"]
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -53,8 +61,12 @@ class DepartmentDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class CategoryView(generics.ListCreateAPIView):
+class CategoryView(OrderMixin, generics.ListCreateAPIView):
     serializer_class = CategorySerializer
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
+    filterset_class = CategoryFilter
+    search_fields = ["name", "description"]
+    ordering_fields = ["id", "name", "department__name"]
 
     def get_permissions(self):
         if self.request.method == "POST":
@@ -96,9 +108,13 @@ class CategoryDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class TicketView(generics.ListCreateAPIView):
+class TicketView(OrderMixin, generics.ListCreateAPIView):
     serializer_class = TicketSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
+    filterset_class = TicketFilter
+    search_fields = ["title", "description"]
+    ordering_fields = ["id", "title", "status", "priority", "created_at"]
 
     def get_queryset(self):
         return Ticket.objects.select_related('department', 'category', 'customer', 'assigned_to').all()

@@ -1,13 +1,13 @@
-from app.accounts.filters import UserFilter
 from django.utils import timezone
+from django_filters.rest_framework import DjangoFilterBackend
 from guardian.shortcuts import assign_perm, remove_perm
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.filters import OrderingFilter, SearchFilter
-from django_filters.rest_framework import DjangoFilterBackend
 
+from app.accounts.filters import UserFilter
 from app.accounts.models import User
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
 from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserPermissionSerializer, UserSerializer
