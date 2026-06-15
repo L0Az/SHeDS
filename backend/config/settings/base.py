@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 import sys
+from datetime import timedelta
 
 import sentry_sdk
 from decouple import config
@@ -166,6 +167,11 @@ REST_FRAMEWORK = {
     ),
     "DATE_INPUT_FORMATS": ["%d/%m/%Y"],
     "PAGE_SIZE": 10,
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
 CACHE_TTL = config("CACHE_TTL", default=60 * 5, cast=int)
