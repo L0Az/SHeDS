@@ -1,4 +1,7 @@
+"use client";
+
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
 import type { TicketPriority, TicketStatus } from "@/types";
 
 const variants = {
@@ -34,35 +37,52 @@ export function Badge({ children, variant = "default", className }: BadgeProps) 
 }
 
 export function StatusBadge({ status }: { status: TicketStatus }) {
-  const map: Record<TicketStatus, { label: string; variant: BadgeVariant }> = {
-    open: { label: "Open", variant: "info" },
-    in_progress: { label: "In Progress", variant: "warning" },
-    in_development: { label: "In Development", variant: "purple" },
-    closed: { label: "Closed", variant: "default" },
+  const t = useT();
+  const map: Record<TicketStatus, BadgeVariant> = {
+    open: "info",
+    in_progress: "warning",
+    in_development: "purple",
+    closed: "default",
   };
-  const { label, variant } = map[status];
-  return <Badge variant={variant}>{label}</Badge>;
+  const labels: Record<TicketStatus, ReturnType<typeof t>> = {
+    open: t("status_open"),
+    in_progress: t("status_in_progress"),
+    in_development: t("status_in_development"),
+    closed: t("status_closed"),
+  };
+  return <Badge variant={map[status]}>{labels[status]}</Badge>;
 }
 
 export function PriorityBadge({ priority }: { priority: TicketPriority }) {
-  const map: Record<TicketPriority, { label: string; variant: BadgeVariant }> = {
-    high: { label: "High", variant: "danger" },
-    medium: { label: "Medium", variant: "warning" },
-    low: { label: "Low", variant: "success" },
+  const t = useT();
+  const map: Record<TicketPriority, BadgeVariant> = {
+    high: "danger",
+    medium: "warning",
+    low: "success",
   };
-  const { label, variant } = map[priority];
-  return <Badge variant={variant}>{label}</Badge>;
+  const labels: Record<TicketPriority, ReturnType<typeof t>> = {
+    high: t("priority_high"),
+    medium: t("priority_medium"),
+    low: t("priority_low"),
+  };
+  return <Badge variant={map[priority]}>{labels[priority]}</Badge>;
 }
 
 export function RoleBadge({ role }: { role: string }) {
-  const map: Record<string, BadgeVariant> = {
+  const t = useT();
+  const variantMap: Record<string, BadgeVariant> = {
     admin: "purple",
     technician: "info",
     customer: "default",
   };
+  const labelMap: Record<string, string> = {
+    admin: t("role_admin"),
+    technician: t("role_technician"),
+    customer: t("role_customer"),
+  };
   return (
-    <Badge variant={map[role] ?? "default"}>
-      {role.charAt(0).toUpperCase() + role.slice(1)}
+    <Badge variant={variantMap[role] ?? "default"}>
+      {labelMap[role] ?? role}
     </Badge>
   );
 }

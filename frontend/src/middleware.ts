@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/setup", "/api/auth/login", "/api/auth/bootstrap", "/api/auth/refresh"];
+const PUBLIC_PATHS = ["/login", "/register", "/setup", "/api/auth/login", "/api/auth/bootstrap", "/api/auth/refresh", "/api/auth/register"];
 const DJANGO_URL = process.env.DJANGO_INTERNAL_URL ?? "http://localhost:9000";
 
 function isPublic(pathname: string): boolean {

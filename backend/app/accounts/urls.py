@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from app.accounts.token import CustomTokenObtainPairView
 from app.accounts.views import (
+    CustomerRegisterView,
     FirstUserView,
     NotificationListView,
     NotificationMarkAllReadView,
@@ -19,6 +20,7 @@ urlpatterns = [
     re_path(r"^(?P<version>(v1))/accounts/users/(?P<pk>\d+)/permissions/$", UserPermissionsView.as_view(), name="user-permissions"),
     re_path(r"^(?P<version>(v1))/accounts/users/(?P<pk>\d+)/$", UserRetrieveUpdateView.as_view(), name="user-detail"),
     re_path(r"^(?P<version>(v1))/accounts/users/$", UserListCreateView.as_view(), name="user-list-create"),
+    re_path(r"^(?P<version>(v1))/auth/register/$", CustomerRegisterView.as_view(), name="customer-register"),
     re_path(r"^(?P<version>(v1))/accounts/first/user/$", FirstUserView.as_view(), name="first-user"),
     re_path(r"^(?P<version>(v1))/accounts/me/$", UserMeView.as_view(), name="user-me"),
     re_path(r"^(?P<version>(v1))/accounts/notifications/read-all/$", NotificationMarkAllReadView.as_view(), name="notification-read-all"),

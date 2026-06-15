@@ -97,6 +97,26 @@ class UserPermissionSerializer(serializers.Serializer):
     )
 
 
+class CustomerRegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, required=True)
+
+    class Meta:
+        model = User
+        fields = ["name", "email", "password"]
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise ValidationError("E-mail already in use.")
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User(type=account_choices.CUSTOMER_USER_TYPE, **validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+
 class UserNotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserNotifications

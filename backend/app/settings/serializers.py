@@ -34,3 +34,9 @@ class AppConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppConfig
         exclude = ["step", "logo"]
+
+
+class PublicAppConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AppConfig
+        fields = ["app_name", "allow_customer_signup", "default_language", "default_theme", "logo"]

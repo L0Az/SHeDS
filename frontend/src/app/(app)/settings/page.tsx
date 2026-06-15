@@ -26,18 +26,6 @@ const behaviorSchema = z.object({
   log_retention_days: z.coerce.number().int().min(1).optional(),
 });
 
-const integrationsSchema = z.object({
-  oci_tenancy_ocid: z.string().optional(),
-  oci_user_ocid: z.string().optional(),
-  oci_key_fingerprint: z.string().optional(),
-  oci_private_key: z.string().optional(),
-  oci_region: z.string().optional(),
-  oci_compartment_ocid: z.string().optional(),
-  oci_bucket_name: z.string().optional(),
-  oci_bucket_namespace: z.string().optional(),
-  oci_sender_email: z.string().optional(),
-});
-
 export default function SettingsPage() {
   const { toast } = useToast();
   const t = useT();
@@ -50,10 +38,10 @@ export default function SettingsPage() {
   const [autoClose, setAutoClose] = useState(false);
   const [emailEnabled, setEmailEnabled] = useState(false);
   const [priority, setPriority] = useState<string | null>("medium");
+  const [savingEmail, setSavingEmail] = useState(false);
 
   const basic = useForm({ resolver: zodResolver(basicSchema), defaultValues: { app_name: "", default_language: "en", default_theme: "light" } });
   const behavior = useForm({ resolver: zodResolver(behaviorSchema), defaultValues: { auto_close_after_days: 7, log_retention_days: 30 } });
-  const integrations = useForm({ resolver: zodResolver(integrationsSchema) });
 
   useEffect(() => {
     api.get<AppConfig>("/settings/app/")
@@ -74,20 +62,10 @@ export default function SettingsPage() {
           log_retention_days: cfg.log_retention_days ?? 30,
         });
         setEmailEnabled(cfg.email_notifications_enabled ?? false);
-        integrations.reset({
-          oci_tenancy_ocid: cfg.oci_tenancy_ocid ?? "",
-          oci_user_ocid: cfg.oci_user_ocid ?? "",
-          oci_key_fingerprint: cfg.oci_key_fingerprint ?? "",
-          oci_region: cfg.oci_region ?? "",
-          oci_compartment_ocid: cfg.oci_compartment_ocid ?? "",
-          oci_bucket_name: cfg.oci_bucket_name ?? "",
-          oci_bucket_namespace: cfg.oci_bucket_namespace ?? "",
-          oci_sender_email: cfg.oci_sender_email ?? "",
-        });
         setLoaded(true);
       })
       .catch(() => setLoaded(true));
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveBasic = async (data: z.infer<typeof basicSchema>) => {
     try {
@@ -116,15 +94,15 @@ export default function SettingsPage() {
     }
   };
 
-  const saveIntegrations = async (data: z.infer<typeof integrationsSchema>) => {
+  const saveEmail = async () => {
+    setSavingEmail(true);
     try {
-      const payload = Object.fromEntries(
-        Object.entries({ ...data, email_notifications_enabled: emailEnabled }).filter(([, v]) => v !== "" && v !== undefined)
-      );
-      await api.patch("/settings/app/", payload);
-      toast("success", "Integration settings saved");
+      await api.patch("/settings/app/", { email_notifications_enabled: emailEnabled });
+      toast("success", "Email settings saved");
     } catch (e) {
       toast("error", extractApiError(e));
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -217,39 +195,16 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Email & Integrations */}
+      {/* Email Notifications */}
       <Card>
         <CardHeader>
-          <h3 className="font-semibold text-slate-800">{t("settings_integrations_title")}</h3>
+          <h3 className="font-semibold text-slate-800">{t("settings_email_title")}</h3>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={integrations.handleSubmit(saveIntegrations)} className="flex flex-col gap-4">
-            <Toggle checked={emailEnabled} onCheckedChange={setEmailEnabled} label={t("settings_email_enabled")} description={t("settings_email_desc")} />
-            {emailEnabled && (
-              <Input label={t("settings_sender_email")} type="email" {...integrations.register("oci_sender_email")} />
-            )}
-            <details className="group rounded-lg border border-slate-200">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 list-none flex items-center justify-between">
-                {t("settings_oci_title")}
-                <span className="text-slate-400">▾</span>
-              </summary>
-              <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-2">
-                <Input label={t("settings_oci_tenancy")} {...integrations.register("oci_tenancy_ocid")} />
-                <Input label={t("settings_oci_user")} {...integrations.register("oci_user_ocid")} />
-                <Input label={t("settings_oci_fingerprint")} {...integrations.register("oci_key_fingerprint")} />
-                <Input label={t("settings_oci_region")} {...integrations.register("oci_region")} />
-                <Input label={t("settings_oci_compartment")} {...integrations.register("oci_compartment_ocid")} />
-                <Input label={t("settings_oci_bucket")} {...integrations.register("oci_bucket_name")} />
-                <Input label={t("settings_oci_namespace")} {...integrations.register("oci_bucket_namespace")} />
-                <div className="col-span-2">
-                  <Input label={t("settings_oci_key")} type="password" placeholder={t("settings_oci_key_placeholder")} {...integrations.register("oci_private_key")} />
-                </div>
-              </div>
-            </details>
-            <div className="flex justify-end">
-              <Button type="submit" loading={integrations.formState.isSubmitting}>{t("save")}</Button>
-            </div>
-          </form>
+        <CardContent className="flex flex-col gap-4">
+          <Toggle checked={emailEnabled} onCheckedChange={setEmailEnabled} label={t("settings_email_enabled")} description={t("settings_email_desc")} />
+          <div className="flex justify-end">
+            <Button type="button" loading={savingEmail} onClick={saveEmail}>{t("save")}</Button>
+          </div>
         </CardContent>
       </Card>
     </div>

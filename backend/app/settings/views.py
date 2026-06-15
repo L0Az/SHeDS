@@ -3,13 +3,13 @@ import logging
 from django.conf import settings as django_settings
 from rest_framework import generics, status
 from rest_framework.exceptions import NotFound, ValidationError
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from app.accounts.permissions import IsAdmin
 from app.settings import choices as settings_choices
 from app.settings.models import AppConfig
-from app.settings.serializers import AppConfigSerializer, FinalStepConfigSerializer, FirstStepConfigSerializer, SecondStepConfigSerializer
+from app.settings.serializers import AppConfigSerializer, FinalStepConfigSerializer, FirstStepConfigSerializer, PublicAppConfigSerializer, SecondStepConfigSerializer
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,17 @@ OCI_ENV_FIELDS = [
 
 def _oci_from_env() -> dict:
     return {field: getattr(django_settings, field.upper(), "") for field in OCI_ENV_FIELDS}
+
+
+class PublicAppConfigView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = PublicAppConfigSerializer
+
+    def get(self, request, *args, **kwargs):
+        instance = AppConfig.objects.filter(step=settings_choices.FINAL_STEP_OPTION).first()
+        if not instance:
+            return Response({"allow_customer_signup": False}, status=status.HTTP_200_OK)
+        return Response(self.get_serializer(instance).data)
 
 
 class VerifySetupView(generics.RetrieveAPIView):

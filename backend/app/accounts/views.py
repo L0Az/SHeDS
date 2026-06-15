@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from app.accounts.filters import UserFilter
 from app.accounts.models import User, UserNotifications
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
-from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserNotificationSerializer, UserPermissionSerializer, UserPreferenceSerializer, UserSerializer
+from app.accounts.serializers import VALID_PERMISSIONS, CustomerRegisterSerializer, UserMeSerializer, UserNotificationSerializer, UserPermissionSerializer, UserPreferenceSerializer, UserSerializer
 from app.accounts.services.user import get_user
 from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
@@ -121,6 +121,28 @@ class UserMeView(generics.RetrieveUpdateAPIView):
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(UserMeSerializer(self.get_object(), context={"request": request}).data)
+
+
+class CustomerRegisterView(generics.CreateAPIView):
+    serializer_class = CustomerRegisterSerializer
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        from app.settings.models import AppConfig
+        from app.settings import choices as settings_choices
+
+        config = AppConfig.objects.filter(step=settings_choices.FINAL_STEP_OPTION).first()
+        if not config or not config.allow_customer_signup:
+            return Response({"detail": "Self-registration is not enabled."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            user = serializer.save()
+            token = CustomTokenObtainPairSerializer.get_token(user)
+            return Response(
+                {"access": str(token.access_token), "refresh": str(token)},
+                status=status.HTTP_201_CREATED,
+            )
 
 
 class NotificationListView(generics.ListAPIView):

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ToastProvider } from "@/components/ui/toast";
 import { getSession } from "@/lib/auth";
-import { getCachedAppConfig, getCachedMe } from "@/lib/server-cache";
+import { getCachedAppConfig, getCachedMe, getCachedPublicConfig } from "@/lib/server-cache";
 
 export const metadata: Metadata = {
   title: "SHeDS — Helpdesk",
@@ -21,6 +21,10 @@ export default async function RootLayout({
     const [me, config] = await Promise.all([getCachedMe(), getCachedAppConfig()]);
     lang = me?.language ?? config?.default_language ?? "en";
     theme = config?.default_theme ?? "light";
+  } else {
+    const publicConfig = await getCachedPublicConfig();
+    lang = publicConfig?.default_language ?? "en";
+    theme = publicConfig?.default_theme ?? "light";
   }
 
   return (

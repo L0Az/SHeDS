@@ -100,6 +100,14 @@ export interface UserNotification {
   created_at: string;
 }
 
+export interface PublicAppConfig {
+  app_name: string;
+  allow_customer_signup: boolean;
+  default_language: Language;
+  default_theme: Theme;
+  logo: string | null;
+}
+
 export interface AppConfig {
   id: number;
   app_name: string;
@@ -115,16 +123,6 @@ export interface AppConfig {
   default_ticket_priority: TicketPriority;
   log_retention_days: number;
   email_notifications_enabled: boolean;
-  oci_tenancy_ocid: string | null;
-  oci_user_ocid: string | null;
-  oci_key_fingerprint: string | null;
-  oci_region: string | null;
-  oci_compartment_ocid: string | null;
-  oci_bucket_name: string | null;
-  oci_bucket_namespace: string | null;
-  oci_sender_email: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface PaginatedResponse<T> {
