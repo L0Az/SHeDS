@@ -243,6 +243,9 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@sheds.local")
 
+# Frontend URL — used to build ticket links in email notifications
+FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:3000")
+
 # OCI credentials (sensitive — set in .env, never stored in the database)
 OCI_TENANCY_OCID = config("OCI_TENANCY_OCID", default="")
 OCI_USER_OCID = config("OCI_USER_OCID", default="")

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,6 +30,7 @@ const behaviorSchema = z.object({
 export default function SettingsPage() {
   const { toast } = useToast();
   const t = useT();
+  const router = useRouter();
 
   const [loaded, setLoaded] = useState(false);
   const [allowSignup, setAllowSignup] = useState(false);
@@ -70,6 +72,8 @@ export default function SettingsPage() {
   const saveBasic = async (data: z.infer<typeof basicSchema>) => {
     try {
       await api.patch("/settings/app/", data);
+      document.documentElement.dataset.theme = data.default_theme;
+      router.refresh();
       toast("success", "Basic settings saved");
     } catch (e) {
       toast("error", extractApiError(e));
