@@ -40,6 +40,16 @@ class AdminUserSerializer(UserSerializer):
         fields = UserSerializer.Meta.fields + ["is_staff", "is_superuser"]
 
 
+class UserMeSerializer(UserSerializer):
+    permissions = serializers.SerializerMethodField()
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ["permissions"]
+
+    def get_permissions(self, obj):
+        return list(obj.user_permissions.filter(codename__in=VALID_PERMISSIONS).values_list("codename", flat=True))
+
+
 VALID_PERMISSIONS = [
     "view_user",
     "add_user",

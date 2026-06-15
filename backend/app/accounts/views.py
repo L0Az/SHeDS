@@ -1,13 +1,16 @@
+from app.accounts.filters import UserFilter
 from django.utils import timezone
 from guardian.shortcuts import assign_perm, remove_perm
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.filters import OrderingFilter, SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 
 from app.accounts.models import User
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
-from app.accounts.serializers import VALID_PERMISSIONS, UserPermissionSerializer, UserSerializer
+from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserPermissionSerializer, UserSerializer
 from app.accounts.services.user import get_user
 from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
@@ -15,7 +18,11 @@ from app.common.order import OrderMixin
 
 class UserListCreateView(OrderMixin, generics.ListCreateAPIView):
     serializer_class = UserSerializer
+    filter_backends = (DjangoFilterBackend, SearchFilter, OrderingFilter)
+    filterset_class = UserFilter
     permission_classes = [IsAuthenticated, AdminOrModelPermissions]
+    ordering_fields = ["id", "name", "email", "type", "department__name"]
+    search_fields = ["name", "email", "type"]
 
     def get_queryset(self):
         return User.objects.all()
@@ -96,3 +103,11 @@ class FirstUserView(generics.CreateAPIView):
                 {"access": str(token.access_token), "refresh": str(token)},
                 status=status.HTTP_201_CREATED,
             )
+
+
+class UserMeView(generics.RetrieveAPIView):
+    serializer_class = UserMeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user

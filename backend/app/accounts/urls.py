@@ -5,6 +5,7 @@ from app.accounts.token import CustomTokenObtainPairView
 from app.accounts.views import (
     FirstUserView,
     UserListCreateView,
+    UserMeView,
     UserPermissionsView,
     UserRetrieveUpdateView,
 )
@@ -16,4 +17,5 @@ urlpatterns = [
     re_path(r"^(?P<version>(v1))/accounts/users/(?P<pk>\d+)/$", UserRetrieveUpdateView.as_view(), name="user-detail"),
     re_path(r"^(?P<version>(v1))/accounts/users/$", UserListCreateView.as_view(), name="user-list-create"),
     re_path(r"^(?P<version>(v1))/accounts/first/user/$", FirstUserView.as_view(), name="first-user"),
+    re_path(r"^(?P<version>(v1))/accounts/me/$", UserMeView.as_view(), name="user-me"),
 ]
