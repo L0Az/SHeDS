@@ -18,16 +18,6 @@ class AppConfig(models.Model):
     auto_close_after_days = models.PositiveIntegerField(default=30)
     default_ticket_priority = models.CharField(max_length=20, default=helpdesk_choices.MEDIUM_PRIORITY, choices=helpdesk_choices.PRIORITY_CHOICES)
     log_retention_days = models.PositiveIntegerField(default=90)
-    oci_tenancy_ocid = models.CharField(max_length=255, blank=True, null=True)
-    oci_user_ocid = models.CharField(max_length=255, blank=True, null=True)
-    oci_key_fingerprint = models.CharField(max_length=255, blank=True, null=True)
-    oci_private_key = models.CharField(max_length=255, blank=True, null=True)
-    oci_region = models.CharField(max_length=255, blank=True, null=True)
-    oci_compartment_ocid = models.CharField(max_length=255, blank=True, null=True)
-    oci_bucket_name = models.CharField(max_length=255, blank=True, null=True)
-    oci_bucket_namespace = models.CharField(max_length=255, blank=True, null=True)
-    oci_sender_email = models.EmailField(blank=True, null=True)
-
     step = models.CharField(max_length=20, default=settings_choices.STEP1_OPTION, choices=settings_choices.STEP_CHOICES)
 
     def save(self, *args, **kwargs):

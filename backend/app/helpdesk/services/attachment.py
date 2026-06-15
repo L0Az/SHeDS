@@ -18,7 +18,7 @@ def _object_key(filename: str) -> str:
 
 def _public_url(object_key: str) -> str:
     region = getattr(settings, "OCI_REGION", "")
-    namespace = getattr(settings, "OCI_NAMESPACE", "")
+    namespace = getattr(settings, "OCI_BUCKET_NAMESPACE", "")
     bucket = getattr(settings, "OCI_BUCKET_NAME", "")
     custom_domain = getattr(settings, "OCI_CUSTOM_DOMAIN", "")
     encoded = quote(object_key, safe="/")
@@ -35,7 +35,7 @@ def presign_upload(filename: str, expires_seconds: int = 3600) -> dict:
     import oci
 
     region = getattr(settings, "OCI_REGION", "")
-    namespace = getattr(settings, "OCI_NAMESPACE", "")
+    namespace = getattr(settings, "OCI_BUCKET_NAMESPACE", "")
     bucket = getattr(settings, "OCI_BUCKET_NAME", "")
 
     object_key = _object_key(filename)
@@ -61,7 +61,7 @@ def presign_upload(filename: str, expires_seconds: int = 3600) -> dict:
 def delete_by_url(file_url: str) -> None:
     """Deletes the OCI object identified by its public URL. Silently ignores errors."""
     region = getattr(settings, "OCI_REGION", "")
-    namespace = getattr(settings, "OCI_NAMESPACE", "")
+    namespace = getattr(settings, "OCI_BUCKET_NAMESPACE", "")
     bucket = getattr(settings, "OCI_BUCKET_NAME", "")
     custom_domain = getattr(settings, "OCI_CUSTOM_DOMAIN", "")
 

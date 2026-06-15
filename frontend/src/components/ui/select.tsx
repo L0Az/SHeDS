@@ -53,7 +53,11 @@ export function AppSelect({
             className
           )}
         >
-          <Select.Value placeholder={placeholder} />
+          <Select.Value placeholder={placeholder}>
+            {value != null && value !== ""
+              ? (options.find((o) => o.value === value)?.label ?? value)
+              : undefined}
+          </Select.Value>
           <Select.Icon>
             <ChevronDown className="h-4 w-4 text-slate-400" />
           </Select.Icon>

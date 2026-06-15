@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { serverApi } from "@/lib/api";
-import { getCachedMe } from "@/lib/server-cache";
+import { getCachedMe, getCachedAppConfig } from "@/lib/server-cache";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { LanguageProvider } from "@/lib/i18n/context";
@@ -37,9 +37,9 @@ export default async function AppLayout({ children }: AppLayoutProps) {
     redirect("/dashboard");
   }
 
-  const me = await getCachedMe();
-  const language: Language = (me?.language as Language) ?? "en";
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "SHeDS";
+  const [me, config] = await Promise.all([getCachedMe(), getCachedAppConfig()]);
+  const language: Language = (me?.language as Language) ?? (config?.default_language as Language) ?? "en";
+  const appName = config?.app_name ?? "SHeDS";
 
   return (
     <LanguageProvider language={language}>

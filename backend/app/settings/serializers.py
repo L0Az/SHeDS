@@ -27,23 +27,10 @@ class SecondStepConfigSerializer(serializers.ModelSerializer):
 class FinalStepConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = AppConfig
-        fields = [
-            "email_notifications_enabled",
-            "oci_tenancy_ocid",
-            "oci_user_ocid",
-            "oci_key_fingerprint",
-            "oci_private_key",
-            "oci_region",
-            "oci_compartment_ocid",
-            "oci_bucket_name",
-            "oci_bucket_namespace",
-            "oci_sender_email",
-        ]
+        fields = ["email_notifications_enabled"]
 
 
 class AppConfigSerializer(serializers.ModelSerializer):
-    oci_private_key = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
-
     class Meta:
         model = AppConfig
         exclude = ["step", "logo"]

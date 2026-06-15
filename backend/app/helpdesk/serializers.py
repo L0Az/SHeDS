@@ -8,13 +8,13 @@ from app.helpdesk.models import Category, Department, Ticket, TicketAttachment, 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields = ["id", "name", "description"]
+        fields = ["id", "name", "description", "created_at", "updated_at"]
 
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = Category
-        fields = ["id", "name", "description", "department"]
+        fields = ["id", "name", "description", "department", "created_at", "updated_at"]
 
 
 class TicketAttachmentSerializer(serializers.ModelSerializer):

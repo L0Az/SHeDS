@@ -19,7 +19,7 @@ export default async function RootLayout({
 
   if (session) {
     const [me, config] = await Promise.all([getCachedMe(), getCachedAppConfig()]);
-    lang = me?.language ?? "en";
+    lang = me?.language ?? config?.default_language ?? "en";
     theme = config?.default_theme ?? "light";
   }
 

@@ -1,7 +1,6 @@
-import json
 import logging
 
-from django.conf import settings
+from django.conf import settings as django_settings
 from rest_framework import generics, status
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import IsAuthenticated
@@ -10,10 +9,24 @@ from rest_framework.response import Response
 from app.accounts.permissions import IsAdmin
 from app.settings import choices as settings_choices
 from app.settings.models import AppConfig
-from app.settings.passbolt import PassboltClient, PassboltError
 from app.settings.serializers import AppConfigSerializer, FinalStepConfigSerializer, FirstStepConfigSerializer, SecondStepConfigSerializer
 
 logger = logging.getLogger(__name__)
+
+OCI_ENV_FIELDS = [
+    "oci_tenancy_ocid",
+    "oci_user_ocid",
+    "oci_key_fingerprint",
+    "oci_region",
+    "oci_compartment_ocid",
+    "oci_bucket_name",
+    "oci_bucket_namespace",
+    "oci_sender_email",
+]
+
+
+def _oci_from_env() -> dict:
+    return {field: getattr(django_settings, field.upper(), "") for field in OCI_ENV_FIELDS}
 
 
 class VerifySetupView(generics.RetrieveAPIView):
@@ -65,38 +78,7 @@ class FinalStepConfigView(generics.UpdateAPIView):
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save(step=settings_choices.FINAL_STEP_OPTION)
-            self._sync_to_passbolt(serializer.instance)
             return Response(serializer.data)
-
-    def _sync_to_passbolt(self, config):
-        if not getattr(settings, 'PASSBOLT_BASE_URL', ''):
-            return
-
-        description = json.dumps(
-            {
-                "tenancy_ocid": config.oci_tenancy_ocid,
-                "key_fingerprint": config.oci_key_fingerprint,
-                "region": config.oci_region,
-                "compartment_ocid": config.oci_compartment_ocid,
-                "bucket_name": config.oci_bucket_name,
-                "bucket_namespace": config.oci_bucket_namespace,
-                "sender_email": config.oci_sender_email,
-            }
-        )
-
-        try:
-            with PassboltClient() as client:
-                client.authenticate()
-                client.create_resource(
-                    name=f"OCI Config — {config.app_name}",
-                    password=config.oci_private_key or '',
-                    username=config.oci_user_ocid or '',
-                    uri='https://cloud.oracle.com',
-                    description=description,
-                )
-        except PassboltError as exc:
-            logger.error("Passbolt sync failed: %s", exc)
-            raise ValidationError(f"OCI credentials saved but Passbolt upload failed: {exc}")
 
 
 class AppConfigView(generics.RetrieveUpdateAPIView):
@@ -108,9 +90,14 @@ class AppConfigView(generics.RetrieveUpdateAPIView):
             return app_config
         raise NotFound("AppConfig not found or setup not completed.")
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = {**self.get_serializer(instance).data, **_oci_from_env()}
+        return Response(data)
+
     def patch(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
             serializer.save()
-            return Response(serializer.data)
+            return Response({**serializer.data, **_oci_from_env()})

@@ -23,13 +23,13 @@ def _build_oci_signer_and_config():
 
     cfg = {
         "user": getattr(settings, "OCI_USER_OCID", ""),
-        "fingerprint": getattr(settings, "OCI_FINGERPRINT", ""),
+        "fingerprint": getattr(settings, "OCI_KEY_FINGERPRINT", ""),
         "tenancy": getattr(settings, "OCI_TENANCY_OCID", ""),
         "region": getattr(settings, "OCI_REGION", ""),
     }
 
     key_file = getattr(settings, "OCI_KEY_FILE", "")
-    key_content = getattr(settings, "OCI_KEY_CONTENT", "")
+    key_content = getattr(settings, "OCI_PRIVATE_KEY", "")
     if key_file:
         cfg["key_file"] = key_file
     elif key_content:
@@ -56,7 +56,7 @@ class OCIObjectStorage(Storage):
         self.location = location
         self.querystring_auth = querystring_auth
         self.par_expire_seconds = par_expire_seconds
-        self.namespace = getattr(settings, "OCI_NAMESPACE", "")
+        self.namespace = getattr(settings, "OCI_BUCKET_NAMESPACE", "")
         self.bucket_name = getattr(settings, "OCI_BUCKET_NAME", "")
         self.region = getattr(settings, "OCI_REGION", "")
         self.custom_domain = getattr(settings, "OCI_CUSTOM_DOMAIN", "")
