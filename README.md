@@ -4,6 +4,107 @@ A self-hosted helpdesk built with Django (backend) and Next.js (frontend), deplo
 
 ---
 
+## Running locally (for testing)
+
+No domain, no TLS, no cloud credentials needed. Docker Compose brings up Postgres, Redis, the Django backend, and the Celery worker. You run the Next.js frontend directly with `npm`.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) 24+ with Compose v2
+- Node.js 20+ and npm
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-org/sheds.git
+cd sheds
+```
+
+### 2. Configure the backend
+
+```bash
+cp backend/.env.example backend/.env   # if no .env.example exists, create the file manually
+```
+
+Minimal `backend/.env` that works locally (the Docker Compose dev file hard-codes Postgres/Redis so you only need Django settings):
+
+```env
+STAGE=development
+DJANGO_SETTINGS_MODULE=config.settings.development
+
+SECRET_KEY=local-dev-secret-key-change-me
+
+DB_NAME=sheds_db
+DB_USER=sheds_user
+DB_PASSWORD=sheds_password
+DB_HOST=db
+DB_PORT=5432
+DB_TIMEOUT=30
+
+CACHE_LOCATION=redis://redis:6379/1
+
+# Leave email/OCI blank — email is disabled in dev and local file storage is used
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=noreply@localhost
+```
+
+### 3. Configure the frontend
+
+```bash
+cp frontend/.env.local.example frontend/.env.local   # create if it doesn't exist
+```
+
+Minimal `frontend/.env.local`:
+
+```env
+DJANGO_INTERNAL_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=SHeDS
+```
+
+### 4. Start backend services
+
+```bash
+docker compose up -d
+```
+
+This starts Postgres, Redis, the Django backend on **port 8000**, and the Celery worker. Migrations run automatically on first boot.
+
+### 5. Start the frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend is available at **http://localhost:3000**.
+
+### 6. First-time setup
+
+Open **http://localhost:3000/setup** and follow the wizard to create the administrator account.
+
+### Useful commands
+
+```bash
+# View backend logs
+docker compose logs -f backend
+
+# Run a Django management command
+docker compose exec backend python manage.py <command>
+
+# Stop everything (keeps data)
+docker compose down
+
+# Stop and wipe all data
+docker compose down -v
+```
+
+---
+
 ## 🇬🇧 English Setup Guide
 
 ### Prerequisites
@@ -109,6 +210,107 @@ Internet → Caddy (443/TLS)
                ├── /admin/* → Django backend
                └── /*     → Next.js frontend (node:3000)
                                    └── (server-side) → Django backend (internal)
+```
+
+---
+
+## Executar localmente (para testes)
+
+Sem domínio, sem TLS, sem credenciais de nuvem. O Docker Compose sobe o Postgres, Redis, o backend Django e o worker Celery. O frontend Next.js é executado diretamente com `npm`.
+
+### Pré-requisitos
+
+- [Docker](https://docs.docker.com/get-docker/) 24+ com Compose v2
+- Node.js 20+ e npm
+
+### 1. Clonar o repositório
+
+```bash
+git clone https://github.com/your-org/sheds.git
+cd sheds
+```
+
+### 2. Configurar o backend
+
+```bash
+cp backend/.env.example backend/.env   # se não houver .env.example, crie o arquivo manualmente
+```
+
+`backend/.env` mínimo para desenvolvimento local (o Docker Compose já define Postgres/Redis, só precisas das variáveis do Django):
+
+```env
+STAGE=development
+DJANGO_SETTINGS_MODULE=config.settings.development
+
+SECRET_KEY=local-dev-secret-key-change-me
+
+DB_NAME=sheds_db
+DB_USER=sheds_user
+DB_PASSWORD=sheds_password
+DB_HOST=db
+DB_PORT=5432
+DB_TIMEOUT=30
+
+CACHE_LOCATION=redis://redis:6379/1
+
+# Deixa e-mail e OCI em branco — e-mail está desativado em dev e o armazenamento local é usado
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=
+EMAIL_HOST_PASSWORD=
+DEFAULT_FROM_EMAIL=noreply@localhost
+```
+
+### 3. Configurar o frontend
+
+```bash
+cp frontend/.env.local.example frontend/.env.local   # criar se não existir
+```
+
+`frontend/.env.local` mínimo:
+
+```env
+DJANGO_INTERNAL_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=SHeDS
+```
+
+### 4. Iniciar os serviços do backend
+
+```bash
+docker compose up -d
+```
+
+Sobe o Postgres, Redis, o backend Django na **porta 8000** e o worker Celery. As migrações são executadas automaticamente na primeira inicialização.
+
+### 5. Iniciar o frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+O frontend estará disponível em **http://localhost:3000**.
+
+### 6. Configuração inicial
+
+Aceda a **http://localhost:3000/setup** e siga o assistente para criar a conta de administrador.
+
+### Comandos úteis
+
+```bash
+# Ver logs do backend
+docker compose logs -f backend
+
+# Executar um comando de gestão do Django
+docker compose exec backend python manage.py <comando>
+
+# Parar tudo (mantém os dados)
+docker compose down
+
+# Parar e apagar todos os dados
+docker compose down -v
 ```
 
 ---
