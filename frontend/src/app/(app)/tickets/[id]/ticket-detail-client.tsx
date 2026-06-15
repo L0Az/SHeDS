@@ -1,20 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Trash2, Save } from "lucide-react";
+import { Trash2, Save, Upload, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { AppSelect } from "@/components/ui/select";
 import { StatusBadge, PriorityBadge } from "@/components/ui/badge";
 import { AppDialog } from "@/components/ui/dialog";
-import { formatDateTime, extractApiError } from "@/lib/utils";
+import { formatDateTime, formatBytes, extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
-import type { Ticket, Department, Category } from "@/types";
+import type { Ticket, Department, Category, TicketAttachment, PaginatedResponse } from "@/types";
 
 const schema = z.object({
   title: z.string().min(1),
@@ -51,6 +51,65 @@ export function TicketDetailClient({ ticket, departments, categories, role }: Ti
   const { toast } = useToast();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const canManage = role === "admin" || role === "technician";
+
+  const [attachments, setAttachments] = useState<TicketAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    api.get<PaginatedResponse<TicketAttachment>>(`/helpdesk/tickets/${ticket.id}/attachments/`, { limit: 100 })
+      .then((res) => setAttachments(res.results))
+      .catch(() => {});
+  }, [ticket.id]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      // Step 1: get a pre-signed upload URL from the backend
+      const { upload_url, file_url } = await api.post<{ upload_url: string; file_url: string }>(
+        `/helpdesk/tickets/${ticket.id}/attachments/presign/`,
+        { filename: file.name },
+      );
+
+      // Step 2: PUT the file directly to OCI — no Django in the middle
+      const putRes = await fetch(upload_url, {
+        method: "PUT",
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+        body: file,
+      });
+      if (!putRes.ok) throw new Error(`Upload failed: ${putRes.status}`);
+
+      // Step 3: register the attachment in the backend with the final URL
+      const att = await api.post<TicketAttachment>(
+        `/helpdesk/tickets/${ticket.id}/attachments/`,
+        {
+          file_url,
+          original_filename: file.name,
+          content_type: file.type || "application/octet-stream",
+          size_bytes: file.size,
+        },
+      );
+      setAttachments((prev) => [...prev, att]);
+      toast("success", "File uploaded");
+    } catch (err) {
+      toast("error", extractApiError(err));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleDeleteAttachment = async (attachmentId: number) => {
+    try {
+      await api.delete(`/helpdesk/tickets/${ticket.id}/attachments/${attachmentId}/`);
+      setAttachments((prev) => prev.filter((a) => a.id !== attachmentId));
+      toast("success", "Attachment removed");
+    } catch (err) {
+      toast("error", extractApiError(err));
+    }
+  };
 
   const { register, handleSubmit, control, watch, formState: { isSubmitting, isDirty } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -155,8 +214,49 @@ export function TicketDetailClient({ ticket, departments, categories, role }: Ti
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-6">
-            <h2 className="mb-2 font-semibold text-slate-800">Attachments</h2>
-            <p className="text-sm text-slate-500 italic">Attachments coming soon.</p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-slate-800">Attachments</h2>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                loading={uploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="h-4 w-4" /> Upload
+              </Button>
+            </div>
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleUpload} />
+            {attachments.length === 0 ? (
+              <p className="text-sm text-slate-500">No attachments yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {attachments.map((a) => (
+                  <li key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip className="h-4 w-4 text-slate-400 shrink-0" />
+                      <a
+                        href={a.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-slate-800 truncate hover:underline"
+                      >
+                        {a.original_filename}
+                      </a>
+                      <span className="text-xs text-slate-400 shrink-0">{formatBytes(a.size_bytes)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteAttachment(a.id)}
+                      className="text-slate-400 hover:text-red-500 transition-colors shrink-0"
+                      aria-label="Delete attachment"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 

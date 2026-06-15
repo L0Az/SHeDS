@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Pencil, Trash2, KeyRound, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, KeyRound, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,28 @@ function permCode(action: string, model: string) {
   return `${action}_${model}`;
 }
 
+const ROLE_FILTER_OPTIONS = [
+  { value: "all", label: "All roles" },
+  { value: "admin", label: "Administrator" },
+  { value: "technician", label: "Technician" },
+  { value: "customer", label: "Customer" },
+];
+
+type SortDir = "asc" | "desc" | null;
+function sortDir(ordering: string, field: string): SortDir {
+  if (ordering === field) return "asc";
+  if (ordering === `-${field}`) return "desc";
+  return null;
+}
+function toggleOrdering(current: string, field: string): string {
+  return current === field ? `-${field}` : field;
+}
+function SortIcon({ dir }: { dir: SortDir }) {
+  if (dir === "asc") return <ArrowUp className="inline h-3 w-3 ml-0.5" />;
+  if (dir === "desc") return <ArrowDown className="inline h-3 w-3 ml-0.5" />;
+  return <ArrowUpDown className="inline h-3 w-3 ml-0.5 opacity-30" />;
+}
+
 interface UsersClientProps {
   initialData: PaginatedResponse<User>;
   allUsers: User[];
@@ -60,6 +82,13 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [ordering, setOrdering] = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [filterDept, setFilterDept] = useState("all");
+  const filtersRef = useRef({ search: "", ordering: "", filterRole: "all", filterDept: "all" });
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Permissions state
   const [permTarget, setPermTarget] = useState<User | null>(null);
@@ -78,6 +107,7 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
     { value: "pt", label: "Português" },
   ];
   const deptOptions = departments.map((d) => ({ value: String(d.id), label: d.name }));
+  const deptFilterOptions = [{ value: "all", label: "All departments" }, ...deptOptions];
   const deptMap = Object.fromEntries(departments.map((d) => [d.id, d.name]));
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } =
@@ -89,7 +119,13 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
   const load = useCallback(async (newOffset: number) => {
     setLoading(true);
     try {
-      const res = await api.paginate<User>("/accounts/users/", LIMIT, newOffset);
+      const { search, ordering, filterRole, filterDept } = filtersRef.current;
+      const extra: Record<string, string | undefined> = {};
+      if (search) extra.search = search;
+      if (ordering) extra.ordering = ordering;
+      if (filterRole !== "all") extra.type = filterRole;
+      if (filterDept !== "all") extra.department = filterDept;
+      const res = await api.paginate<User>("/accounts/users/", LIMIT, newOffset, extra);
       setData(res);
       setOffset(newOffset);
     } catch {
@@ -98,6 +134,30 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
       setLoading(false);
     }
   }, [toast]);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    filtersRef.current.search = value;
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => { setOffset(0); load(0); }, 300);
+  };
+
+  const handleOrdering = (field: string) => {
+    const next = toggleOrdering(ordering, field);
+    setOrdering(next);
+    filtersRef.current.ordering = next;
+    setOffset(0);
+    load(0);
+  };
+
+  const handleFilter = (key: keyof typeof filtersRef.current, setter: (v: string) => void) =>
+    (value: string | null) => {
+      const v = value ?? "all";
+      setter(v);
+      filtersRef.current[key] = v;
+      setOffset(0);
+      load(0);
+    };
 
   const openCreate = () => {
     setEditing(null);
@@ -198,7 +258,6 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
     }
   };
 
-  // Reset permissions dialog when closed
   useEffect(() => {
     if (!permTarget) {
       setActivePerms(new Set());
@@ -218,13 +277,45 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-52">
+          <Input
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+        <div className="w-44">
+          <AppSelect
+            value={filterRole}
+            onValueChange={handleFilter("filterRole", setFilterRole)}
+            options={ROLE_FILTER_OPTIONS}
+          />
+        </div>
+        <div className="w-52">
+          <AppSelect
+            value={filterDept}
+            onValueChange={handleFilter("filterDept", setFilterDept)}
+            options={deptFilterOptions}
+          />
+        </div>
+      </div>
+
       <Table>
         <TableHead>
           <TableRow>
-            <Th>Name</Th>
-            <Th>Email</Th>
-            <Th>Role</Th>
-            <Th>Department</Th>
+            <Th onClick={() => handleOrdering("name")}>
+              Name <SortIcon dir={sortDir(ordering, "name")} />
+            </Th>
+            <Th onClick={() => handleOrdering("email")}>
+              Email <SortIcon dir={sortDir(ordering, "email")} />
+            </Th>
+            <Th onClick={() => handleOrdering("type")}>
+              Role <SortIcon dir={sortDir(ordering, "type")} />
+            </Th>
+            <Th onClick={() => handleOrdering("department__name")}>
+              Department <SortIcon dir={sortDir(ordering, "department__name")} />
+            </Th>
             <Th className="w-32">Actions</Th>
           </TableRow>
         </TableHead>

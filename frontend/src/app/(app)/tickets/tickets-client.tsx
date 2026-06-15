@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus } from "lucide-react";
+import { Plus, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,36 @@ interface TicketsClientProps {
 
 const LIMIT = 10;
 
+const STATUS_OPTIONS = [
+  { value: "all", label: "All statuses" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "in_development", label: "In Development" },
+  { value: "closed", label: "Closed" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "all", label: "All priorities" },
+  { value: "high", label: "High" },
+  { value: "medium", label: "Medium" },
+  { value: "low", label: "Low" },
+];
+
+type SortDir = "asc" | "desc" | null;
+function sortDir(ordering: string, field: string): SortDir {
+  if (ordering === field) return "asc";
+  if (ordering === `-${field}`) return "desc";
+  return null;
+}
+function toggleOrdering(current: string, field: string): string {
+  return current === field ? `-${field}` : field;
+}
+function SortIcon({ dir }: { dir: SortDir }) {
+  if (dir === "asc") return <ArrowUp className="inline h-3 w-3 ml-0.5" />;
+  if (dir === "desc") return <ArrowDown className="inline h-3 w-3 ml-0.5" />;
+  return <ArrowUpDown className="inline h-3 w-3 ml-0.5 opacity-30" />;
+}
+
 export function TicketsClient({ initialData, departments, categories, role }: TicketsClientProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -46,16 +76,49 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const [search, setSearch] = useState("");
+  const [ordering, setOrdering] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [filterDept, setFilterDept] = useState("all");
+  const [filterCat, setFilterCat] = useState("all");
+  const filtersRef = useRef({
+    search: "", ordering: "",
+    filterStatus: "all", filterPriority: "all",
+    filterDept: "all", filterCat: "all",
+  });
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
+  const deptOptions = departments.map((d) => ({ value: String(d.id), label: d.name }));
+  const deptFilterOptions = [{ value: "all", label: "All departments" }, ...deptOptions];
+
+  const allCatOptions = categories.map((c) => ({ value: String(c.id), label: c.name }));
+  const catFilterOptions = [{ value: "all", label: "All categories" }, ...allCatOptions];
+  const filteredCategories = selectedDept
+    ? categories.filter((c) => String(c.department) === selectedDept)
+    : categories;
+  const catFormOptions = filteredCategories.map((c) => ({ value: String(c.id), label: c.name }));
+
+  const canManage = role === "admin" || role === "technician";
+
   const load = useCallback(async (newOffset: number) => {
     setLoading(true);
     try {
-      const res = await api.paginate<Ticket>("/helpdesk/tickets/", LIMIT, newOffset);
+      const f = filtersRef.current;
+      const extra: Record<string, string | undefined> = {};
+      if (f.search) extra.search = f.search;
+      if (f.ordering) extra.ordering = f.ordering;
+      if (f.filterStatus !== "all") extra.status = f.filterStatus;
+      if (f.filterPriority !== "all") extra.priority = f.filterPriority;
+      if (f.filterDept !== "all") extra.department = f.filterDept;
+      if (f.filterCat !== "all") extra.category = f.filterCat;
+      const res = await api.paginate<Ticket>("/helpdesk/tickets/", LIMIT, newOffset, extra);
       setData(res);
       setOffset(newOffset);
     } catch {
@@ -64,6 +127,30 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
       setLoading(false);
     }
   }, [toast]);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    filtersRef.current.search = value;
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => { setOffset(0); load(0); }, 300);
+  };
+
+  const handleOrdering = (field: string) => {
+    const next = toggleOrdering(ordering, field);
+    setOrdering(next);
+    filtersRef.current.ordering = next;
+    setOffset(0);
+    load(0);
+  };
+
+  const handleFilter = (key: keyof typeof filtersRef.current, setter: (v: string) => void) =>
+    (value: string | null) => {
+      const v = value ?? "all";
+      setter(v);
+      filtersRef.current[key] = v;
+      setOffset(0);
+      load(0);
+    };
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -85,26 +172,6 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
     }
   };
 
-  const filteredCategories = selectedDept
-    ? categories.filter((c) => String(c.department) === selectedDept)
-    : categories;
-
-  const deptOptions = departments.map((d) => ({ value: String(d.id), label: d.name }));
-  const catOptions = filteredCategories.map((c) => ({ value: String(c.id), label: c.name }));
-  const priorityOptions = [
-    { value: "high", label: "High" },
-    { value: "medium", label: "Medium" },
-    { value: "low", label: "Low" },
-  ];
-  const statusOptions = [
-    { value: "open", label: "Open" },
-    { value: "in_progress", label: "In Progress" },
-    { value: "in_development", label: "In Development" },
-    { value: "closed", label: "Closed" },
-  ];
-
-  const canManage = role === "admin" || role === "technician";
-
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -117,14 +184,60 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-52">
+          <Input
+            placeholder="Search by title or description…"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+        <div className="w-44">
+          <AppSelect
+            value={filterStatus}
+            onValueChange={handleFilter("filterStatus", setFilterStatus)}
+            options={STATUS_OPTIONS}
+          />
+        </div>
+        <div className="w-44">
+          <AppSelect
+            value={filterPriority}
+            onValueChange={handleFilter("filterPriority", setFilterPriority)}
+            options={PRIORITY_OPTIONS}
+          />
+        </div>
+        <div className="w-48">
+          <AppSelect
+            value={filterDept}
+            onValueChange={handleFilter("filterDept", setFilterDept)}
+            options={deptFilterOptions}
+          />
+        </div>
+        <div className="w-48">
+          <AppSelect
+            value={filterCat}
+            onValueChange={handleFilter("filterCat", setFilterCat)}
+            options={catFilterOptions}
+          />
+        </div>
+      </div>
+
       <Table>
         <TableHead>
           <TableRow>
-            <Th>#</Th>
-            <Th>Title</Th>
-            <Th>Priority</Th>
-            <Th>Status</Th>
-            <Th>Created</Th>
+            <Th className="w-12">#</Th>
+            <Th onClick={() => handleOrdering("title")}>
+              Title <SortIcon dir={sortDir(ordering, "title")} />
+            </Th>
+            <Th onClick={() => handleOrdering("priority")}>
+              Priority <SortIcon dir={sortDir(ordering, "priority")} />
+            </Th>
+            <Th onClick={() => handleOrdering("status")}>
+              Status <SortIcon dir={sortDir(ordering, "status")} />
+            </Th>
+            <Th onClick={() => handleOrdering("created_at")}>
+              Created <SortIcon dir={sortDir(ordering, "created_at")} />
+            </Th>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -179,7 +292,7 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
                   label="Category"
                   value={field.value ?? null}
                   onValueChange={field.onChange}
-                  options={catOptions}
+                  options={catFormOptions}
                   placeholder="Select category…"
                   error={errors.category?.message}
                 />
@@ -191,7 +304,7 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
               name="priority"
               control={control}
               render={({ field }) => (
-                <AppSelect label="Priority" value={field.value ?? null} onValueChange={field.onChange} options={priorityOptions} placeholder="Default" />
+                <AppSelect label="Priority" value={field.value ?? null} onValueChange={field.onChange} options={PRIORITY_OPTIONS.slice(1)} placeholder="Default" />
               )}
             />
             {canManage && (
@@ -199,7 +312,7 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
                 name="status"
                 control={control}
                 render={({ field }) => (
-                  <AppSelect label="Status" value={field.value ?? null} onValueChange={field.onChange} options={statusOptions} placeholder="Open" />
+                  <AppSelect label="Status" value={field.value ?? null} onValueChange={field.onChange} options={STATUS_OPTIONS.slice(1)} placeholder="Open" />
                 )}
               />
             )}

@@ -23,6 +23,11 @@ ADMIN_LAST="${PASSBOLT_ADMIN_LAST_NAME:-User}"
 log() { echo "[passbolt-init] $*"; }
 
 log "Writing cake config..."
+mkdir -p /etc/passbolt
+if [ ! -e /usr/share/php/passbolt/config ] && [ ! -L /usr/share/php/passbolt/config ]; then
+    ln -s /etc/passbolt /usr/share/php/passbolt/config
+fi
+
 php << 'PHP'
 <?php
 $cfg = [

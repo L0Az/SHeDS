@@ -39,7 +39,7 @@ export interface Department {
 export interface Category {
   id: number;
   name: string;
-  description: number | null;
+  description: string | null;
   department: number;
   created_at: string;
   updated_at: string;
@@ -73,11 +73,12 @@ export interface TicketComment {
 export interface TicketAttachment {
   id: number;
   ticket: number;
-  file: string;
-  filename: string;
+  comment: number | null;
+  file_url: string;
+  original_filename: string;
   content_type: string;
   size_bytes: number;
-  comment: number | null;
+  uploaded_by: number;
   created_at: string;
   updated_at: string;
 }

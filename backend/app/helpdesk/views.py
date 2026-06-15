@@ -7,8 +7,9 @@ from rest_framework.response import Response
 from app.accounts.permissions import AdminOrModelPermissions
 from app.common.order import OrderMixin
 from app.helpdesk.filters import CategoryFilter, DepartmentFilter, TicketFilter
-from app.helpdesk.models import Category, Department, Ticket
+from app.helpdesk.models import Category, Department, Ticket, TicketAttachment
 from app.helpdesk.serializers import CategorySerializer, DepartmentSerializer, TicketAttachmentSerializer, TicketCommentSerializer, TicketSerializer
+from app.helpdesk.services.attachment import delete_by_url, presign_upload
 from app.helpdesk.services.category import get_category
 from app.helpdesk.services.department import get_department
 from app.helpdesk.services.ticket import get_ticket
@@ -160,15 +161,46 @@ class CommentInTicketView(generics.CreateAPIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class AttachmentInTicketView(generics.CreateAPIView):
+class PresignAttachmentView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        filename = request.data.get("filename", "file")
+        try:
+            result = presign_upload(str(filename))
+        except Exception as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        return Response(result)
+
+
+class AttachmentInTicketView(generics.ListCreateAPIView):
     serializer_class = TicketAttachmentSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        ticket_id = self.kwargs.get("ticket_pk")
+        return TicketAttachment.objects.filter(ticket_id=ticket_id).order_by("created_at")
 
     def post(self, request, *args, **kwargs):
         ticket_id = self.kwargs.get("ticket_pk")
         ticket = get_ticket(ticket_id)
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid(raise_exception=True):
-            serializer["uploaded_by"] = request.user
-            serializer.save(ticket=ticket)
+            serializer.save(ticket=ticket, uploaded_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AttachmentDetailView(generics.DestroyAPIView):
+    serializer_class = TicketAttachmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        ticket_id = self.kwargs.get("ticket_pk")
+        pk = self.kwargs.get("pk")
+        return generics.get_object_or_404(TicketAttachment, pk=pk, ticket_id=ticket_id)
+
+    def delete(self, request, *args, **kwargs):
+        instance = self.get_object()
+        delete_by_url(instance.file_url)
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

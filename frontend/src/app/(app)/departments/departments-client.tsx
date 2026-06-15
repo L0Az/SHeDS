@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Table, TableHead, TableBody, TableRow, Th, Td } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,21 @@ type FormData = z.infer<typeof schema>;
 
 const LIMIT = 10;
 
+type SortDir = "asc" | "desc" | null;
+function sortDir(ordering: string, field: string): SortDir {
+  if (ordering === field) return "asc";
+  if (ordering === `-${field}`) return "desc";
+  return null;
+}
+function toggleOrdering(current: string, field: string): string {
+  return current === field ? `-${field}` : field;
+}
+function SortIcon({ dir }: { dir: SortDir }) {
+  if (dir === "asc") return <ArrowUp className="inline h-3 w-3 ml-0.5" />;
+  if (dir === "desc") return <ArrowDown className="inline h-3 w-3 ml-0.5" />;
+  return <ArrowUpDown className="inline h-3 w-3 ml-0.5 opacity-30" />;
+}
+
 interface DepartmentsClientProps {
   initialData: PaginatedResponse<Department>;
 }
@@ -36,6 +51,11 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
   const [deleteTarget, setDeleteTarget] = useState<Department | null>(null);
   const [editing, setEditing] = useState<Department | null>(null);
 
+  const [search, setSearch] = useState("");
+  const [ordering, setOrdering] = useState("");
+  const filtersRef = useRef({ search: "", ordering: "" });
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
@@ -43,7 +63,11 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
   const load = useCallback(async (newOffset: number) => {
     setLoading(true);
     try {
-      const res = await api.paginate<Department>("/helpdesk/departments/", LIMIT, newOffset);
+      const { search, ordering } = filtersRef.current;
+      const extra: Record<string, string | undefined> = {};
+      if (search) extra.search = search;
+      if (ordering) extra.ordering = ordering;
+      const res = await api.paginate<Department>("/helpdesk/departments/", LIMIT, newOffset, extra);
       setData(res);
       setOffset(newOffset);
     } catch {
@@ -52,6 +76,21 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
       setLoading(false);
     }
   }, [toast]);
+
+  const handleSearch = (value: string) => {
+    setSearch(value);
+    filtersRef.current.search = value;
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => { setOffset(0); load(0); }, 300);
+  };
+
+  const handleOrdering = (field: string) => {
+    const next = toggleOrdering(ordering, field);
+    setOrdering(next);
+    filtersRef.current.ordering = next;
+    setOffset(0);
+    load(0);
+  };
 
   const openCreate = () => {
     setEditing(null);
@@ -105,12 +144,26 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
         </Button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex-1 min-w-52">
+          <Input
+            placeholder="Search by name or description…"
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
       <Table>
         <TableHead>
           <TableRow>
-            <Th>Name</Th>
+            <Th onClick={() => handleOrdering("name")}>
+              Name <SortIcon dir={sortDir(ordering, "name")} />
+            </Th>
             <Th>Description</Th>
-            <Th>Created</Th>
+            <Th onClick={() => handleOrdering("id")}>
+              Created <SortIcon dir={sortDir(ordering, "id")} />
+            </Th>
             <Th className="w-24">Actions</Th>
           </TableRow>
         </TableHead>

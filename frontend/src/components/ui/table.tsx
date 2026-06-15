@@ -45,11 +45,13 @@ export function TableRow({
   );
 }
 
-export function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
+export function Th({ children, className, onClick }: { children?: React.ReactNode; className?: string; onClick?: () => void }) {
   return (
     <th
+      onClick={onClick}
       className={cn(
         "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500",
+        onClick && "cursor-pointer select-none hover:text-slate-700",
         className
       )}
     >

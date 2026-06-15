@@ -19,7 +19,8 @@ class CategorySerializer(serializers.ModelSerializer):
 class TicketAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TicketAttachment
-        fields = ["id", "ticket", "file", "filename", "content_type", "size_bytes", "comment"]
+        fields = ["id", "ticket", "comment", "file_url", "original_filename", "content_type", "size_bytes", "uploaded_by", "created_at"]
+        read_only_fields = ["id", "ticket", "uploaded_by", "created_at"]
 
 
 class TicketCommentSerializer(serializers.ModelSerializer):

@@ -1,7 +1,11 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
+import { serverApi } from "@/lib/api";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+
+const SETUP_PATH = "/settings/setup";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -10,6 +14,24 @@ interface AppLayoutProps {
 export default async function AppLayout({ children }: AppLayoutProps) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+
+  try {
+    const { config_status } = await serverApi.get<{ config_status: boolean }>("/settings/verify/");
+
+    if (!config_status && !pathname.startsWith(SETUP_PATH)) {
+      redirect(SETUP_PATH);
+    }
+
+    if (config_status && pathname.startsWith(SETUP_PATH)) {
+      redirect("/dashboard");
+    }
+  } catch {
+    // If the verify call fails entirely, let the request through rather than
+    // blocking the user — they will see an error on the target page.
+  }
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "SHeDS";
 

@@ -62,7 +62,7 @@ class TicketComment(DefaultModel):
 class TicketAttachment(DefaultModel):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="attachments")
     comment = models.ForeignKey(TicketComment, on_delete=models.CASCADE, related_name="attachments", blank=True, null=True)
-    file = models.FileField(upload_to="ticket_attachments/")
+    file_url = models.CharField(max_length=2048, default="")
     uploaded_by = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="attachments")
     original_filename = models.CharField(max_length=255)
     size_bytes = models.PositiveIntegerField()

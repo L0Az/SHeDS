@@ -70,7 +70,7 @@ services:
         condition: service_healthy
     entrypoint: ["/bin/bash", "/passbolt_init.sh"]
     environment:
-      APP_FULL_BASE_URL: http://localhost:8080
+      APP_FULL_BASE_URL: http://passbolt
       DATASOURCES_DEFAULT_HOST: passbolt_db
       DATASOURCES_DEFAULT_USERNAME: passbolt
       DATASOURCES_DEFAULT_PASSWORD: passbolt_password
