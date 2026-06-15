@@ -9,6 +9,7 @@ from app.helpdesk.views import (
     DepartmentDetailView,
     DepartmentView,
     PresignAttachmentView,
+    TicketAssigneesView,
     TicketDetailView,
     TicketView,
 )
@@ -18,6 +19,7 @@ urlpatterns = [
     re_path(r"^(?P<version>(v1))/helpdesk/departments/(?P<pk>\d+)/$", DepartmentDetailView.as_view(), name="department-detail"),
     re_path(r"^(?P<version>(v1))/helpdesk/categories/$", CategoryView.as_view(), name="category-list-create"),
     re_path(r"^(?P<version>(v1))/helpdesk/categories/(?P<pk>\d+)/$", CategoryDetailView.as_view(), name="category-detail"),
+    re_path(r"^(?P<version>(v1))/helpdesk/assignees/$", TicketAssigneesView.as_view(), name="ticket-assignees"),
     re_path(r"^(?P<version>(v1))/helpdesk/tickets/$", TicketView.as_view(), name="ticket-list-create"),
     re_path(r"^(?P<version>(v1))/helpdesk/tickets/(?P<pk>\d+)/$", TicketDetailView.as_view(), name="ticket-detail"),
     re_path(r"^(?P<version>(v1))/helpdesk/tickets/(?P<ticket_pk>\d+)/comments/$", CommentInTicketView.as_view(), name="ticket-comment-create"),

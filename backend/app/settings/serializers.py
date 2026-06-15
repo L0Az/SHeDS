@@ -42,6 +42,8 @@ class FinalStepConfigSerializer(serializers.ModelSerializer):
 
 
 class AppConfigSerializer(serializers.ModelSerializer):
+    oci_private_key = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
+
     class Meta:
         model = AppConfig
-        fields = "__all__"
+        exclude = ["step", "logo"]

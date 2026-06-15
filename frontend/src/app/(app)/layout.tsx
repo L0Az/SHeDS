@@ -2,8 +2,11 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { serverApi } from "@/lib/api";
+import { getCachedMe } from "@/lib/server-cache";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
+import { LanguageProvider } from "@/lib/i18n/context";
+import type { Language } from "@/types";
 
 const SETUP_PATH = "/settings/setup";
 
@@ -34,15 +37,19 @@ export default async function AppLayout({ children }: AppLayoutProps) {
     redirect("/dashboard");
   }
 
+  const me = await getCachedMe();
+  const language: Language = (me?.language as Language) ?? "en";
   const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "SHeDS";
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar role={session.role} appName={appName} />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Topbar name={session.name} role={session.role} />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+    <LanguageProvider language={language}>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar role={session.role} appName={appName} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Topbar name={session.name} role={session.role} language={language} />
+          <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        </div>
       </div>
-    </div>
+    </LanguageProvider>
   );
 }

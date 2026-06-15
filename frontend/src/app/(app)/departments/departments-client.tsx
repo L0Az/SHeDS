@@ -13,6 +13,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { formatDate, extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/context";
 import type { Department, PaginatedResponse } from "@/types";
 
 const schema = z.object({
@@ -44,6 +45,7 @@ interface DepartmentsClientProps {
 
 export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
   const { toast } = useToast();
+  const t = useT();
   const [data, setData] = useState(initialData);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -136,18 +138,18 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Departments</h2>
-          <p className="text-sm text-slate-500">{data.count} total</p>
+          <h2 className="text-xl font-semibold text-slate-900">{t("departments_title")}</h2>
+          <p className="text-sm text-slate-500">{data.count} {t("total")}</p>
         </div>
         <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> New Department
+          <Plus className="h-4 w-4" /> {t("departments_new")}
         </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-52">
           <Input
-            placeholder="Search by name or description…"
+            placeholder={t("departments_search")}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -158,24 +160,24 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
         <TableHead>
           <TableRow>
             <Th onClick={() => handleOrdering("name")}>
-              Name <SortIcon dir={sortDir(ordering, "name")} />
+              {t("name")} <SortIcon dir={sortDir(ordering, "name")} />
             </Th>
-            <Th>Description</Th>
+            <Th>{t("description")}</Th>
             <Th onClick={() => handleOrdering("id")}>
-              Created <SortIcon dir={sortDir(ordering, "id")} />
+              {t("created")} <SortIcon dir={sortDir(ordering, "id")} />
             </Th>
-            <Th className="w-24">Actions</Th>
+            <Th className="w-24">{t("actions")}</Th>
           </TableRow>
         </TableHead>
         <TableBody>
           {loading && (
             <TableRow>
-              <Td className="text-center text-slate-400 py-8" colSpan={99}>Loading…</Td>
+              <Td className="text-center text-slate-400 py-8" colSpan={99}>{t("loading")}</Td>
             </TableRow>
           )}
           {!loading && data.results.length === 0 && (
             <TableRow>
-              <Td className="text-center text-slate-400 py-8" colSpan={99}>No departments yet</Td>
+              <Td className="text-center text-slate-400 py-8" colSpan={99}>{t("departments_no_results")}</Td>
             </TableRow>
           )}
           {!loading && data.results.map((d) => (
@@ -203,14 +205,14 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
       <AppDialog
         open={formOpen}
         onOpenChange={setFormOpen}
-        title={editing ? "Edit Department" : "New Department"}
+        title={editing ? `${t("edit")} ${t("department")}` : t("departments_new")}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input label="Name" placeholder="e.g. IT Support" error={errors.name?.message} {...register("name")} />
-          <Textarea label="Description" placeholder="Optional description…" {...register("description")} />
+          <Input label={t("name")} placeholder={t("departments_name_placeholder")} error={errors.name?.message} {...register("name")} />
+          <Textarea label={t("description")} placeholder={t("optional_description")} {...register("description")} />
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={isSubmitting}>{editing ? "Save changes" : "Create"}</Button>
+            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)}>{t("cancel")}</Button>
+            <Button type="submit" loading={isSubmitting}>{editing ? t("save_changes") : t("create")}</Button>
           </div>
         </form>
       </AppDialog>
@@ -218,12 +220,12 @@ export function DepartmentsClient({ initialData }: DepartmentsClientProps) {
       <AppDialog
         open={!!deleteTarget}
         onOpenChange={(v) => !v && setDeleteTarget(null)}
-        title="Delete department?"
-        description={`Are you sure you want to delete "${deleteTarget?.name}"? This will also delete all associated categories and tickets.`}
+        title={t("departments_delete_title")}
+        description={`"${deleteTarget?.name}" — ${t("departments_delete_desc")}`}
       >
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={onDelete}>Delete</Button>
+          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>{t("cancel")}</Button>
+          <Button variant="danger" onClick={onDelete}>{t("delete")}</Button>
         </div>
       </AppDialog>
     </div>

@@ -53,11 +53,19 @@ export interface Ticket {
   department: number;
   customer: number;
   assigned_to: number | null;
+  assigned_to_name: string | null;
   status: TicketStatus;
   priority: TicketPriority;
   closed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Assignee {
+  id: number;
+  name: string | null;
+  email: string | null;
+  type: UserRole;
 }
 
 export interface TicketComment {

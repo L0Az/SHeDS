@@ -5,12 +5,13 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from app.accounts.models import User
 from app.accounts.permissions import AdminOrModelPermissions
 from app.accounts.services.notifications import dispatch_assignment_changed, dispatch_comment_added, dispatch_status_changed
 from app.common.order import OrderMixin
 from app.helpdesk.filters import CategoryFilter, DepartmentFilter, TicketFilter
 from app.helpdesk.models import Category, Department, Ticket, TicketAttachment
-from app.helpdesk.serializers import CategorySerializer, DepartmentSerializer, TicketAttachmentSerializer, TicketCommentSerializer, TicketSerializer
+from app.helpdesk.serializers import AssigneeSerializer, CategorySerializer, DepartmentSerializer, TicketAttachmentSerializer, TicketCommentSerializer, TicketSerializer
 from app.helpdesk.services.attachment import delete_by_url, presign_upload
 from app.helpdesk.services.category import get_category
 from app.helpdesk.services.department import get_department
@@ -194,6 +195,19 @@ class CommentInTicketView(generics.ListCreateAPIView):
             comment = serializer.save(author=request.user, ticket=ticket)
             dispatch_comment_added(ticket, comment)
             return Response(self.get_serializer(comment).data, status=status.HTTP_201_CREATED)
+
+
+class TicketAssigneesView(generics.ListAPIView):
+    serializer_class = AssigneeSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.type == "customer":
+            raise PermissionDenied()
+        if user.type == "technician":
+            return User.objects.filter(type="technician", department=user.department)
+        return User.objects.filter(type__in=["admin", "technician"])
 
 
 class PresignAttachmentView(generics.GenericAPIView):

@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from app.accounts.filters import UserFilter
 from app.accounts.models import User, UserNotifications
 from app.accounts.permissions import AdminOrModelPermissions, AdminOrObjectPermissions, IsAdmin
-from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserNotificationSerializer, UserPermissionSerializer, UserSerializer
+from app.accounts.serializers import VALID_PERMISSIONS, UserMeSerializer, UserNotificationSerializer, UserPermissionSerializer, UserPreferenceSerializer, UserSerializer
 from app.accounts.services.user import get_user
 from app.accounts.token import CustomTokenObtainPairSerializer
 from app.common.order import OrderMixin
@@ -105,12 +105,22 @@ class FirstUserView(generics.CreateAPIView):
             )
 
 
-class UserMeView(generics.RetrieveAPIView):
-    serializer_class = UserMeSerializer
+class UserMeView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
+
+    def get_serializer_class(self):
+        if self.request.method in ("PUT", "PATCH"):
+            return UserPreferenceSerializer
+        return UserMeSerializer
+
+    def patch(self, request, *args, **kwargs):
+        serializer = self.get_serializer(self.get_object(), data=request.data, partial=True)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response(UserMeSerializer(self.get_object(), context={"request": request}).data)
 
 
 class NotificationListView(generics.ListAPIView):

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -12,13 +12,21 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/context";
+import type { AppConfig } from "@/types";
 
-const step2Schema = z.object({
+const basicSchema = z.object({
+  app_name: z.string().min(1),
+  default_language: z.string(),
+  default_theme: z.string(),
+});
+
+const behaviorSchema = z.object({
   auto_close_after_days: z.coerce.number().int().min(1).optional(),
   log_retention_days: z.coerce.number().int().min(1).optional(),
 });
 
-const step3Schema = z.object({
+const integrationsSchema = z.object({
   oci_tenancy_ocid: z.string().optional(),
   oci_user_ocid: z.string().optional(),
   oci_key_fingerprint: z.string().optional(),
@@ -32,20 +40,67 @@ const step3Schema = z.object({
 
 export default function SettingsPage() {
   const { toast } = useToast();
-  const [priority, setPriority] = useState<string | null>("medium");
+  const t = useT();
+
+  const [loaded, setLoaded] = useState(false);
   const [allowSignup, setAllowSignup] = useState(false);
   const [notifyComment, setNotifyComment] = useState(true);
   const [notifyStatus, setNotifyStatus] = useState(true);
   const [notifyAssignment, setNotifyAssignment] = useState(true);
   const [autoClose, setAutoClose] = useState(false);
   const [emailEnabled, setEmailEnabled] = useState(false);
+  const [priority, setPriority] = useState<string | null>("medium");
 
-  const behavior = useForm({ resolver: zodResolver(step2Schema), defaultValues: { auto_close_after_days: 7, log_retention_days: 30 } });
-  const integrations = useForm({ resolver: zodResolver(step3Schema) });
+  const basic = useForm({ resolver: zodResolver(basicSchema), defaultValues: { app_name: "", default_language: "en", default_theme: "light" } });
+  const behavior = useForm({ resolver: zodResolver(behaviorSchema), defaultValues: { auto_close_after_days: 7, log_retention_days: 30 } });
+  const integrations = useForm({ resolver: zodResolver(integrationsSchema) });
 
-  const saveBehavior = async (data: z.infer<typeof step2Schema>) => {
+  useEffect(() => {
+    api.get<AppConfig>("/settings/app/")
+      .then((cfg) => {
+        basic.reset({
+          app_name: cfg.app_name ?? "",
+          default_language: cfg.default_language ?? "en",
+          default_theme: cfg.default_theme ?? "light",
+        });
+        setAllowSignup(cfg.allow_customer_signup ?? false);
+        setNotifyComment(cfg.notify_on_comment ?? true);
+        setNotifyStatus(cfg.notify_on_status_change ?? true);
+        setNotifyAssignment(cfg.notify_on_assignment ?? true);
+        setAutoClose(cfg.auto_close_inactive_tickets ?? false);
+        setPriority(cfg.default_ticket_priority ?? "medium");
+        behavior.reset({
+          auto_close_after_days: cfg.auto_close_after_days ?? 7,
+          log_retention_days: cfg.log_retention_days ?? 30,
+        });
+        setEmailEnabled(cfg.email_notifications_enabled ?? false);
+        integrations.reset({
+          oci_tenancy_ocid: cfg.oci_tenancy_ocid ?? "",
+          oci_user_ocid: cfg.oci_user_ocid ?? "",
+          oci_key_fingerprint: cfg.oci_key_fingerprint ?? "",
+          oci_region: cfg.oci_region ?? "",
+          oci_compartment_ocid: cfg.oci_compartment_ocid ?? "",
+          oci_bucket_name: cfg.oci_bucket_name ?? "",
+          oci_bucket_namespace: cfg.oci_bucket_namespace ?? "",
+          oci_sender_email: cfg.oci_sender_email ?? "",
+        });
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const saveBasic = async (data: z.infer<typeof basicSchema>) => {
     try {
-      await api.patch("/settings/second/step/", {
+      await api.patch("/settings/app/", data);
+      toast("success", "Basic settings saved");
+    } catch (e) {
+      toast("error", extractApiError(e));
+    }
+  };
+
+  const saveBehavior = async (data: z.infer<typeof behaviorSchema>) => {
+    try {
+      await api.patch("/settings/app/", {
         allow_customer_signup: allowSignup,
         notify_on_comment: notifyComment,
         notify_on_status_change: notifyStatus,
@@ -61,57 +116,102 @@ export default function SettingsPage() {
     }
   };
 
-  const saveIntegrations = async (data: z.infer<typeof step3Schema>) => {
+  const saveIntegrations = async (data: z.infer<typeof integrationsSchema>) => {
     try {
       const payload = Object.fromEntries(
         Object.entries({ ...data, email_notifications_enabled: emailEnabled }).filter(([, v]) => v !== "" && v !== undefined)
       );
-      await api.patch("/settings/final/step/", payload);
+      await api.patch("/settings/app/", payload);
       toast("success", "Integration settings saved");
     } catch (e) {
       toast("error", extractApiError(e));
     }
   };
 
+  const langOptions = [
+    { value: "en", label: t("lang_en") },
+    { value: "pt", label: t("lang_pt") },
+  ];
+  const themeOptions = [
+    { value: "light", label: t("settings_theme_light") },
+    { value: "dark",  label: t("settings_theme_dark") },
+  ];
+  const priorityOptions = [
+    { value: "high",   label: t("priority_high") },
+    { value: "medium", label: t("priority_medium") },
+    { value: "low",    label: t("priority_low") },
+  ];
+
+  if (!loaded) {
+    return (
+      <div className="mx-auto max-w-2xl flex flex-col gap-6">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">{t("settings_title")}</h2>
+          <p className="text-sm text-slate-500">{t("settings_subtitle")}</p>
+        </div>
+        <p className="text-sm text-slate-400">{t("loading")}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Settings</h2>
-        <p className="text-sm text-slate-500">Configure your helpdesk application</p>
+        <h2 className="text-xl font-semibold text-slate-900">{t("settings_title")}</h2>
+        <p className="text-sm text-slate-500">{t("settings_subtitle")}</p>
       </div>
 
-      {/* Ticket Behavior */}
+      {/* Basic */}
       <Card>
         <CardHeader>
-          <h3 className="font-semibold text-slate-800">Ticket Behavior</h3>
+          <h3 className="font-semibold text-slate-800">{t("settings_basic_title")}</h3>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={basic.handleSubmit(saveBasic)} className="flex flex-col gap-4">
+            <Input label={t("settings_app_name")} error={basic.formState.errors.app_name?.message} {...basic.register("app_name")} />
+            <div className="grid grid-cols-2 gap-4">
+              <Controller name="default_language" control={basic.control} render={({ field }) => (
+                <AppSelect label={t("settings_default_language")} value={field.value} onValueChange={(v) => field.onChange(v ?? "en")} options={langOptions} />
+              )} />
+              <Controller name="default_theme" control={basic.control} render={({ field }) => (
+                <AppSelect label={t("settings_default_theme")} value={field.value} onValueChange={(v) => field.onChange(v ?? "light")} options={themeOptions} />
+              )} />
+            </div>
+            <div className="flex justify-end">
+              <Button type="submit" loading={basic.formState.isSubmitting}>{t("save")}</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Behavior */}
+      <Card>
+        <CardHeader>
+          <h3 className="font-semibold text-slate-800">{t("settings_behavior_title")}</h3>
         </CardHeader>
         <CardContent>
           <form onSubmit={behavior.handleSubmit(saveBehavior)} className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
-              <Toggle checked={allowSignup} onCheckedChange={setAllowSignup} label="Allow customer self-signup" description="Customers can register their own accounts" />
-              <Toggle checked={notifyComment} onCheckedChange={setNotifyComment} label="Notify on new comment" />
-              <Toggle checked={notifyStatus} onCheckedChange={setNotifyStatus} label="Notify on status change" />
-              <Toggle checked={notifyAssignment} onCheckedChange={setNotifyAssignment} label="Notify on ticket assignment" />
-              <Toggle checked={autoClose} onCheckedChange={setAutoClose} label="Auto-close inactive tickets" />
+              <Toggle checked={allowSignup} onCheckedChange={setAllowSignup} label={t("settings_allow_signup")} description={t("settings_allow_signup_desc")} />
+              <Toggle checked={notifyComment} onCheckedChange={setNotifyComment} label={t("settings_notify_comment")} />
+              <Toggle checked={notifyStatus} onCheckedChange={setNotifyStatus} label={t("settings_notify_status")} />
+              <Toggle checked={notifyAssignment} onCheckedChange={setNotifyAssignment} label={t("settings_notify_assignment")} />
+              <Toggle checked={autoClose} onCheckedChange={setAutoClose} label={t("settings_auto_close")} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               {autoClose && (
-                <Input label="Auto-close after (days)" type="number" min={1} {...behavior.register("auto_close_after_days")} />
+                <Input label={t("settings_auto_close_days")} type="number" min={1} {...behavior.register("auto_close_after_days")} />
               )}
               <AppSelect
-                label="Default ticket priority"
+                label={t("settings_default_priority")}
                 value={priority}
                 onValueChange={setPriority}
-                options={[
-                  { value: "high", label: "High" },
-                  { value: "medium", label: "Medium" },
-                  { value: "low", label: "Low" },
-                ]}
+                options={priorityOptions}
               />
-              <Input label="Log retention (days)" type="number" min={1} {...behavior.register("log_retention_days")} />
+              <Input label={t("settings_log_retention")} type="number" min={1} {...behavior.register("log_retention_days")} />
             </div>
             <div className="flex justify-end">
-              <Button type="submit" loading={behavior.formState.isSubmitting}>Save</Button>
+              <Button type="submit" loading={behavior.formState.isSubmitting}>{t("save")}</Button>
             </div>
           </form>
         </CardContent>
@@ -120,37 +220,34 @@ export default function SettingsPage() {
       {/* Email & Integrations */}
       <Card>
         <CardHeader>
-          <h3 className="font-semibold text-slate-800">Email & Integrations</h3>
+          <h3 className="font-semibold text-slate-800">{t("settings_integrations_title")}</h3>
         </CardHeader>
         <CardContent>
           <form onSubmit={integrations.handleSubmit(saveIntegrations)} className="flex flex-col gap-4">
-            <Toggle checked={emailEnabled} onCheckedChange={setEmailEnabled} label="Enable email notifications" description="Send emails via OCI Email Delivery" />
-
+            <Toggle checked={emailEnabled} onCheckedChange={setEmailEnabled} label={t("settings_email_enabled")} description={t("settings_email_desc")} />
             {emailEnabled && (
-              <Input label="Sender Email" type="email" {...integrations.register("oci_sender_email")} />
+              <Input label={t("settings_sender_email")} type="email" {...integrations.register("oci_sender_email")} />
             )}
-
             <details className="group rounded-lg border border-slate-200">
               <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 list-none flex items-center justify-between">
-                Oracle Cloud (OCI) Configuration
+                {t("settings_oci_title")}
                 <span className="text-slate-400">▾</span>
               </summary>
               <div className="grid grid-cols-2 gap-4 px-4 pb-4 pt-2">
-                <Input label="Tenancy OCID" {...integrations.register("oci_tenancy_ocid")} />
-                <Input label="User OCID" {...integrations.register("oci_user_ocid")} />
-                <Input label="Key Fingerprint" {...integrations.register("oci_key_fingerprint")} />
-                <Input label="Region" {...integrations.register("oci_region")} />
-                <Input label="Compartment OCID" {...integrations.register("oci_compartment_ocid")} />
-                <Input label="Bucket Name" {...integrations.register("oci_bucket_name")} />
-                <Input label="Bucket Namespace" {...integrations.register("oci_bucket_namespace")} />
+                <Input label={t("settings_oci_tenancy")} {...integrations.register("oci_tenancy_ocid")} />
+                <Input label={t("settings_oci_user")} {...integrations.register("oci_user_ocid")} />
+                <Input label={t("settings_oci_fingerprint")} {...integrations.register("oci_key_fingerprint")} />
+                <Input label={t("settings_oci_region")} {...integrations.register("oci_region")} />
+                <Input label={t("settings_oci_compartment")} {...integrations.register("oci_compartment_ocid")} />
+                <Input label={t("settings_oci_bucket")} {...integrations.register("oci_bucket_name")} />
+                <Input label={t("settings_oci_namespace")} {...integrations.register("oci_bucket_namespace")} />
                 <div className="col-span-2">
-                  <Input label="Private Key" type="password" placeholder="Paste key to update (never shown)" {...integrations.register("oci_private_key")} />
+                  <Input label={t("settings_oci_key")} type="password" placeholder={t("settings_oci_key_placeholder")} {...integrations.register("oci_private_key")} />
                 </div>
               </div>
             </details>
-
             <div className="flex justify-end">
-              <Button type="submit" loading={integrations.formState.isSubmitting}>Save</Button>
+              <Button type="submit" loading={integrations.formState.isSubmitting}>{t("save")}</Button>
             </div>
           </form>
         </CardContent>

@@ -12,22 +12,24 @@ import {
   Headset,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/context";
+import type { TranslationKey } from "@/lib/i18n/translations";
 import type { UserRole } from "@/types";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: React.ElementType;
   roles: UserRole[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["admin", "technician", "customer"] },
-  { href: "/tickets", label: "Tickets", icon: Ticket, roles: ["admin", "technician", "customer"] },
-  { href: "/departments", label: "Departments", icon: Building2, roles: ["admin", "technician"] },
-  { href: "/categories", label: "Categories", icon: Tag, roles: ["admin", "technician"] },
-  { href: "/users", label: "Users", icon: Users, roles: ["admin"] },
-  { href: "/settings", label: "Settings", icon: Settings, roles: ["admin"] },
+  { href: "/dashboard",   labelKey: "nav_dashboard",   icon: LayoutDashboard, roles: ["admin", "technician", "customer"] },
+  { href: "/tickets",     labelKey: "nav_tickets",     icon: Ticket,          roles: ["admin", "technician", "customer"] },
+  { href: "/departments", labelKey: "nav_departments", icon: Building2,       roles: ["admin", "technician"] },
+  { href: "/categories",  labelKey: "nav_categories",  icon: Tag,             roles: ["admin", "technician"] },
+  { href: "/users",       labelKey: "nav_users",       icon: Users,           roles: ["admin"] },
+  { href: "/settings",    labelKey: "nav_settings",    icon: Settings,        roles: ["admin"] },
 ];
 
 interface SidebarProps {
@@ -37,6 +39,7 @@ interface SidebarProps {
 
 export function Sidebar({ role, appName }: SidebarProps) {
   const pathname = usePathname();
+  const t = useT();
 
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -51,7 +54,7 @@ export function Sidebar({ role, appName }: SidebarProps) {
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-1">
-          {items.map(({ href, label, icon: Icon }) => {
+          {items.map(({ href, labelKey, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
               <li key={href}>
@@ -65,7 +68,7 @@ export function Sidebar({ role, appName }: SidebarProps) {
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {label}
+                  {t(labelKey)}
                 </Link>
               </li>
             );

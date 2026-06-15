@@ -16,6 +16,7 @@ import { AppSelect } from "@/components/ui/select";
 import { formatDate, extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/context";
 import type { Ticket, Department, Category, PaginatedResponse } from "@/types";
 
 const schema = z.object({
@@ -38,21 +39,6 @@ interface TicketsClientProps {
 
 const LIMIT = 10;
 
-const STATUS_OPTIONS = [
-  { value: "all", label: "All statuses" },
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "in_development", label: "In Development" },
-  { value: "closed", label: "Closed" },
-];
-
-const PRIORITY_OPTIONS = [
-  { value: "all", label: "All priorities" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
 type SortDir = "asc" | "desc" | null;
 function sortDir(ordering: string, field: string): SortDir {
   if (ordering === field) return "asc";
@@ -71,6 +57,7 @@ function SortIcon({ dir }: { dir: SortDir }) {
 export function TicketsClient({ initialData, departments, categories, role }: TicketsClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const t = useT();
   const [data, setData] = useState(initialData);
   const [offset, setOffset] = useState(0);
   const [open, setOpen] = useState(false);
@@ -95,11 +82,26 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
     resolver: zodResolver(schema),
   });
 
+  const STATUS_OPTIONS = [
+    { value: "all",            label: t("status_all") },
+    { value: "open",           label: t("status_open") },
+    { value: "in_progress",    label: t("status_in_progress") },
+    { value: "in_development", label: t("status_in_development") },
+    { value: "closed",         label: t("status_closed") },
+  ];
+
+  const PRIORITY_OPTIONS = [
+    { value: "all",    label: t("priority_all") },
+    { value: "high",   label: t("priority_high") },
+    { value: "medium", label: t("priority_medium") },
+    { value: "low",    label: t("priority_low") },
+  ];
+
   const deptOptions = departments.map((d) => ({ value: String(d.id), label: d.name }));
-  const deptFilterOptions = [{ value: "all", label: "All departments" }, ...deptOptions];
+  const deptFilterOptions = [{ value: "all", label: t("all_departments") }, ...deptOptions];
 
   const allCatOptions = categories.map((c) => ({ value: String(c.id), label: c.name }));
-  const catFilterOptions = [{ value: "all", label: "All categories" }, ...allCatOptions];
+  const catFilterOptions = [{ value: "all", label: t("categories_title") }, ...allCatOptions];
   const filteredCategories = selectedDept
     ? categories.filter((c) => String(c.department) === selectedDept)
     : categories;
@@ -176,49 +178,33 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Tickets</h2>
-          <p className="text-sm text-slate-500">{data.count} total</p>
+          <h2 className="text-xl font-semibold text-slate-900">{t("tickets_title")}</h2>
+          <p className="text-sm text-slate-500">{data.count} {t("total")}</p>
         </div>
         <Button onClick={() => setOpen(true)}>
-          <Plus className="h-4 w-4" /> New Ticket
+          <Plus className="h-4 w-4" /> {t("tickets_new")}
         </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-52">
           <Input
-            placeholder="Search by title or description…"
+            placeholder={t("tickets_search")}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
         <div className="w-44">
-          <AppSelect
-            value={filterStatus}
-            onValueChange={handleFilter("filterStatus", setFilterStatus)}
-            options={STATUS_OPTIONS}
-          />
+          <AppSelect value={filterStatus} onValueChange={handleFilter("filterStatus", setFilterStatus)} options={STATUS_OPTIONS} />
         </div>
         <div className="w-44">
-          <AppSelect
-            value={filterPriority}
-            onValueChange={handleFilter("filterPriority", setFilterPriority)}
-            options={PRIORITY_OPTIONS}
-          />
+          <AppSelect value={filterPriority} onValueChange={handleFilter("filterPriority", setFilterPriority)} options={PRIORITY_OPTIONS} />
         </div>
         <div className="w-48">
-          <AppSelect
-            value={filterDept}
-            onValueChange={handleFilter("filterDept", setFilterDept)}
-            options={deptFilterOptions}
-          />
+          <AppSelect value={filterDept} onValueChange={handleFilter("filterDept", setFilterDept)} options={deptFilterOptions} />
         </div>
         <div className="w-48">
-          <AppSelect
-            value={filterCat}
-            onValueChange={handleFilter("filterCat", setFilterCat)}
-            options={catFilterOptions}
-          />
+          <AppSelect value={filterCat} onValueChange={handleFilter("filterCat", setFilterCat)} options={catFilterOptions} />
         </div>
       </div>
 
@@ -226,38 +212,26 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
         <TableHead>
           <TableRow>
             <Th className="w-12">#</Th>
-            <Th onClick={() => handleOrdering("title")}>
-              Title <SortIcon dir={sortDir(ordering, "title")} />
-            </Th>
-            <Th onClick={() => handleOrdering("priority")}>
-              Priority <SortIcon dir={sortDir(ordering, "priority")} />
-            </Th>
-            <Th onClick={() => handleOrdering("status")}>
-              Status <SortIcon dir={sortDir(ordering, "status")} />
-            </Th>
-            <Th onClick={() => handleOrdering("created_at")}>
-              Created <SortIcon dir={sortDir(ordering, "created_at")} />
-            </Th>
+            <Th onClick={() => handleOrdering("title")}>{t("title")} <SortIcon dir={sortDir(ordering, "title")} /></Th>
+            <Th onClick={() => handleOrdering("priority")}>{t("priority")} <SortIcon dir={sortDir(ordering, "priority")} /></Th>
+            <Th onClick={() => handleOrdering("status")}>{t("status")} <SortIcon dir={sortDir(ordering, "status")} /></Th>
+            <Th onClick={() => handleOrdering("created_at")}>{t("created")} <SortIcon dir={sortDir(ordering, "created_at")} /></Th>
           </TableRow>
         </TableHead>
         <TableBody>
           {loading && (
-            <TableRow>
-              <Td className="text-center text-slate-400 py-8" colSpan={99}>Loading…</Td>
-            </TableRow>
+            <TableRow><Td className="text-center text-slate-400 py-8" colSpan={99}>{t("loading")}</Td></TableRow>
           )}
           {!loading && data.results.length === 0 && (
-            <TableRow>
-              <Td className="text-center text-slate-400 py-8" colSpan={99}>No tickets found</Td>
-            </TableRow>
+            <TableRow><Td className="text-center text-slate-400 py-8" colSpan={99}>{t("tickets_no_results")}</Td></TableRow>
           )}
-          {!loading && data.results.map((t) => (
-            <TableRow key={t.id} onClick={() => router.push(`/tickets/${t.id}`)}>
-              <Td className="font-mono text-slate-400 w-16">#{t.id}</Td>
-              <Td className="font-medium text-slate-900">{t.title}</Td>
-              <Td><PriorityBadge priority={t.priority} /></Td>
-              <Td><StatusBadge status={t.status} /></Td>
-              <Td className="text-slate-500">{formatDate(t.created_at)}</Td>
+          {!loading && data.results.map((tk) => (
+            <TableRow key={tk.id} onClick={() => router.push(`/tickets/${tk.id}`)}>
+              <Td className="font-mono text-slate-400 w-16">#{tk.id}</Td>
+              <Td className="font-medium text-slate-900">{tk.title}</Td>
+              <Td><PriorityBadge priority={tk.priority} /></Td>
+              <Td><StatusBadge status={tk.status} /></Td>
+              <Td className="text-slate-500">{formatDate(tk.created_at)}</Td>
             </TableRow>
           ))}
         </TableBody>
@@ -265,61 +239,31 @@ export function TicketsClient({ initialData, departments, categories, role }: Ti
 
       <Pagination count={data.count} limit={LIMIT} offset={offset} onOffsetChange={load} />
 
-      <AppDialog open={open} onOpenChange={setOpen} title="New Ticket" description="Fill in the details to create a new support ticket.">
+      <AppDialog open={open} onOpenChange={setOpen} title={t("tickets_new")} description={t("tickets_new_desc")}>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input label="Title" placeholder="Brief summary of the issue" error={errors.title?.message} {...register("title")} />
-          <Textarea label="Description" placeholder="Describe the issue in detail…" {...register("description")} />
+          <Input label={t("title")} placeholder={t("tickets_title_placeholder")} error={errors.title?.message} {...register("title")} />
+          <Textarea label={t("description")} placeholder={t("tickets_description_placeholder")} {...register("description")} />
           <div className="grid grid-cols-2 gap-3">
-            <Controller
-              name="department"
-              control={control}
-              render={({ field }) => (
-                <AppSelect
-                  label="Department"
-                  value={field.value ?? null}
-                  onValueChange={(v) => { field.onChange(v); setSelectedDept(v); }}
-                  options={deptOptions}
-                  placeholder="Select dept…"
-                  error={errors.department?.message}
-                />
-              )}
-            />
-            <Controller
-              name="category"
-              control={control}
-              render={({ field }) => (
-                <AppSelect
-                  label="Category"
-                  value={field.value ?? null}
-                  onValueChange={field.onChange}
-                  options={catFormOptions}
-                  placeholder="Select category…"
-                  error={errors.category?.message}
-                />
-              )}
-            />
+            <Controller name="department" control={control} render={({ field }) => (
+              <AppSelect label={t("department")} value={field.value ?? null} onValueChange={(v) => { field.onChange(v); setSelectedDept(v); }} options={deptOptions} placeholder={t("select_dept")} error={errors.department?.message} />
+            )} />
+            <Controller name="category" control={control} render={({ field }) => (
+              <AppSelect label={t("category")} value={field.value ?? null} onValueChange={field.onChange} options={catFormOptions} placeholder={t("select_category")} error={errors.category?.message} />
+            )} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Controller
-              name="priority"
-              control={control}
-              render={({ field }) => (
-                <AppSelect label="Priority" value={field.value ?? null} onValueChange={field.onChange} options={PRIORITY_OPTIONS.slice(1)} placeholder="Default" />
-              )}
-            />
+            <Controller name="priority" control={control} render={({ field }) => (
+              <AppSelect label={t("priority")} value={field.value ?? null} onValueChange={field.onChange} options={PRIORITY_OPTIONS.slice(1)} placeholder={t("priority_default")} />
+            )} />
             {canManage && (
-              <Controller
-                name="status"
-                control={control}
-                render={({ field }) => (
-                  <AppSelect label="Status" value={field.value ?? null} onValueChange={field.onChange} options={STATUS_OPTIONS.slice(1)} placeholder="Open" />
-                )}
-              />
+              <Controller name="status" control={control} render={({ field }) => (
+                <AppSelect label={t("status")} value={field.value ?? null} onValueChange={field.onChange} options={STATUS_OPTIONS.slice(1)} placeholder={t("status_open")} />
+              )} />
             )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={isSubmitting}>Create Ticket</Button>
+            <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t("cancel")}</Button>
+            <Button type="submit" loading={isSubmitting}>{t("tickets_create")}</Button>
           </div>
         </form>
       </AppDialog>

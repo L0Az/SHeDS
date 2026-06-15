@@ -47,9 +47,40 @@ class TicketCommentSerializer(serializers.ModelSerializer):
         return data
 
 
+class AssigneeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "name", "email", "type"]
+
+
 class TicketSerializer(serializers.ModelSerializer):
     customer = serializers.PrimaryKeyRelatedField(required=False, queryset=User.objects.filter(type=accounts_choices.CUSTOMER_USER_TYPE))
-    
+    assigned_to_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Ticket
-        fields = ["id", "title", "description", "category", "department", "customer", "assigned_to", "status", "priority", "closed_at", "created_at", "updated_at"]
+        fields = ["id", "title", "description", "category", "department", "customer", "assigned_to", "assigned_to_name", "status", "priority", "closed_at", "created_at", "updated_at"]
+        read_only_fields = ["id", "customer", "assigned_to_name", "closed_at", "created_at", "updated_at"]
+
+    def get_assigned_to_name(self, obj) -> str | None:
+        if obj.assigned_to:
+            return obj.assigned_to.name or obj.assigned_to.email or ""
+        return None
+
+    def validate_assigned_to(self, value):
+        if value is None:
+            return value
+        request = self.context.get("request")
+        if not request:
+            return value
+        user = request.user
+        if user.type == accounts_choices.CUSTOMER_USER_TYPE:
+            raise serializers.ValidationError("Customers cannot assign tickets.")
+        if value.type not in (accounts_choices.ADMIN_USER_TYPE, accounts_choices.TECHNICIAN_USER_TYPE):
+            raise serializers.ValidationError("Only admins and technicians can be assigned to tickets.")
+        if user.type == accounts_choices.TECHNICIAN_USER_TYPE:
+            if value.type != accounts_choices.TECHNICIAN_USER_TYPE:
+                raise serializers.ValidationError("Technicians can only assign other technicians.")
+            if value.department_id != user.department_id:
+                raise serializers.ValidationError("Technicians can only assign technicians from their own department.")
+        return value

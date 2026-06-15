@@ -99,7 +99,7 @@ class FinalStepConfigView(generics.UpdateAPIView):
             raise ValidationError(f"OCI credentials saved but Passbolt upload failed: {exc}")
 
 
-class AppConfigView(generics.UpdateAPIView):
+class AppConfigView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated, IsAdmin]
     serializer_class = AppConfigSerializer
 
@@ -112,4 +112,5 @@ class AppConfigView(generics.UpdateAPIView):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         if serializer.is_valid(raise_exception=True):
+            serializer.save()
             return Response(serializer.data)

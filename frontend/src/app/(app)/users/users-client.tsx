@@ -15,6 +15,7 @@ import { RoleBadge } from "@/components/ui/badge";
 import { extractApiError } from "@/lib/utils";
 import { api } from "@/lib/client-api";
 import { useToast } from "@/components/ui/toast";
+import { useT } from "@/lib/i18n/context";
 import type { User, Department, PaginatedResponse } from "@/types";
 
 const createSchema = z.object({
@@ -32,12 +33,12 @@ type EditFormData = z.infer<typeof editSchema>;
 const LIMIT = 10;
 
 const PERMISSION_MODELS = [
-  { key: "user",              label: "User" },
-  { key: "department",        label: "Department" },
-  { key: "category",          label: "Category" },
-  { key: "ticket",            label: "Ticket" },
-  { key: "ticketcomment",     label: "Ticket Comment" },
-  { key: "ticketattachment",  label: "Ticket Attachment" },
+  { key: "user",             labelKey: "perm_user" },
+  { key: "department",       labelKey: "perm_department" },
+  { key: "category",         labelKey: "perm_category" },
+  { key: "ticket",           labelKey: "perm_ticket" },
+  { key: "ticketcomment",    labelKey: "perm_ticketcomment" },
+  { key: "ticketattachment", labelKey: "perm_ticketattachment" },
 ] as const;
 
 const PERMISSION_ACTIONS = ["view", "add", "change", "delete"] as const;
@@ -45,13 +46,6 @@ const PERMISSION_ACTIONS = ["view", "add", "change", "delete"] as const;
 function permCode(action: string, model: string) {
   return `${action}_${model}`;
 }
-
-const ROLE_FILTER_OPTIONS = [
-  { value: "all", label: "All roles" },
-  { value: "admin", label: "Administrator" },
-  { value: "technician", label: "Technician" },
-  { value: "customer", label: "Customer" },
-];
 
 type SortDir = "asc" | "desc" | null;
 function sortDir(ordering: string, field: string): SortDir {
@@ -76,6 +70,7 @@ interface UsersClientProps {
 
 export function UsersClient({ initialData, allUsers: _allUsers, departments }: UsersClientProps) {
   const { toast } = useToast();
+  const t = useT();
   const [data, setData] = useState(initialData);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -90,7 +85,6 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
   const filtersRef = useRef({ search: "", ordering: "", filterRole: "all", filterDept: "all" });
   const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Permissions state
   const [permTarget, setPermTarget] = useState<User | null>(null);
   const [permLoading, setPermLoading] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
@@ -98,16 +92,22 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
   const [originalPerms, setOriginalPerms] = useState<Set<string>>(new Set());
 
   const roleOptions = [
-    { value: "admin", label: "Administrator" },
-    { value: "technician", label: "Technician" },
-    { value: "customer", label: "Customer" },
+    { value: "admin",      label: t("role_admin") },
+    { value: "technician", label: t("role_technician") },
+    { value: "customer",   label: t("role_customer") },
+  ];
+  const roleFilterOptions = [
+    { value: "all",        label: t("all_roles") },
+    { value: "admin",      label: t("role_admin") },
+    { value: "technician", label: t("role_technician") },
+    { value: "customer",   label: t("role_customer") },
   ];
   const langOptions = [
-    { value: "en", label: "English" },
-    { value: "pt", label: "Português" },
+    { value: "en", label: t("lang_en") },
+    { value: "pt", label: t("lang_pt") },
   ];
   const deptOptions = departments.map((d) => ({ value: String(d.id), label: d.name }));
-  const deptFilterOptions = [{ value: "all", label: "All departments" }, ...deptOptions];
+  const deptFilterOptions = [{ value: "all", label: t("all_departments") }, ...deptOptions];
   const deptMap = Object.fromEntries(departments.map((d) => [d.id, d.name]));
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } =
@@ -269,66 +269,46 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-slate-900">Users</h2>
-          <p className="text-sm text-slate-500">{data.count} total</p>
+          <h2 className="text-xl font-semibold text-slate-900">{t("users_title")}</h2>
+          <p className="text-sm text-slate-500">{data.count} {t("total")}</p>
         </div>
         <Button onClick={openCreate}>
-          <Plus className="h-4 w-4" /> New User
+          <Plus className="h-4 w-4" /> {t("users_new")}
         </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-52">
           <Input
-            placeholder="Search by name or email…"
+            placeholder={t("users_search")}
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
         <div className="w-44">
-          <AppSelect
-            value={filterRole}
-            onValueChange={handleFilter("filterRole", setFilterRole)}
-            options={ROLE_FILTER_OPTIONS}
-          />
+          <AppSelect value={filterRole} onValueChange={handleFilter("filterRole", setFilterRole)} options={roleFilterOptions} />
         </div>
         <div className="w-52">
-          <AppSelect
-            value={filterDept}
-            onValueChange={handleFilter("filterDept", setFilterDept)}
-            options={deptFilterOptions}
-          />
+          <AppSelect value={filterDept} onValueChange={handleFilter("filterDept", setFilterDept)} options={deptFilterOptions} />
         </div>
       </div>
 
       <Table>
         <TableHead>
           <TableRow>
-            <Th onClick={() => handleOrdering("name")}>
-              Name <SortIcon dir={sortDir(ordering, "name")} />
-            </Th>
-            <Th onClick={() => handleOrdering("email")}>
-              Email <SortIcon dir={sortDir(ordering, "email")} />
-            </Th>
-            <Th onClick={() => handleOrdering("type")}>
-              Role <SortIcon dir={sortDir(ordering, "type")} />
-            </Th>
-            <Th onClick={() => handleOrdering("department__name")}>
-              Department <SortIcon dir={sortDir(ordering, "department__name")} />
-            </Th>
-            <Th className="w-32">Actions</Th>
+            <Th onClick={() => handleOrdering("name")}>{t("name")} <SortIcon dir={sortDir(ordering, "name")} /></Th>
+            <Th onClick={() => handleOrdering("email")}>{t("email")} <SortIcon dir={sortDir(ordering, "email")} /></Th>
+            <Th onClick={() => handleOrdering("type")}>{t("role")} <SortIcon dir={sortDir(ordering, "type")} /></Th>
+            <Th onClick={() => handleOrdering("department__name")}>{t("department")} <SortIcon dir={sortDir(ordering, "department__name")} /></Th>
+            <Th className="w-32">{t("actions")}</Th>
           </TableRow>
         </TableHead>
         <TableBody>
           {loading && (
-            <TableRow>
-              <Td className="text-center text-slate-400 py-8" colSpan={99}>Loading…</Td>
-            </TableRow>
+            <TableRow><Td className="text-center text-slate-400 py-8" colSpan={99}>{t("loading")}</Td></TableRow>
           )}
           {!loading && data.results.length === 0 && (
-            <TableRow>
-              <Td className="text-center text-slate-400 py-8" colSpan={99}>No users</Td>
-            </TableRow>
+            <TableRow><Td className="text-center text-slate-400 py-8" colSpan={99}>{t("users_no_results")}</Td></TableRow>
           )}
           {!loading && data.results.map((u) => (
             <TableRow key={u.id}>
@@ -338,7 +318,7 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
               <Td className="text-slate-500">{u.department ? (deptMap[u.department] ?? `#${u.department}`) : "—"}</Td>
               <Td>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon" title="Permissions" onClick={() => openPerms(u)}>
+                  <Button variant="ghost" size="icon" title={t("users_permissions")} onClick={() => openPerms(u)}>
                     <KeyRound className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
@@ -356,67 +336,54 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
 
       <Pagination count={data.count} limit={LIMIT} offset={offset} onOffsetChange={load} />
 
-      {/* Create / Edit dialog */}
-      <AppDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        title={editing ? "Edit User" : "New User"}
-      >
+      <AppDialog open={formOpen} onOpenChange={setFormOpen} title={editing ? `${t("edit")} ${t("perm_user")}` : t("users_new")}>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <Input label="Full Name" error={errors.name?.message} {...register("name")} />
-          <Input label="Email" type="email" error={errors.email?.message} {...register("email")} />
+          <Input label={t("users_full_name")} error={errors.name?.message} {...register("name")} />
+          <Input label={t("email")} type="email" error={errors.email?.message} {...register("email")} />
           <Input
-            label={editing ? "New Password (leave blank to keep)" : "Password"}
+            label={editing ? t("users_new_password") : t("password")}
             type="password"
             error={errors.password?.message}
             {...register("password")}
           />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Phone" {...register("phone")} />
+            <Input label={t("phone")} {...register("phone")} />
             <Controller name="department" control={control} render={({ field }) => (
-              <AppSelect
-                label="Department"
-                value={field.value ?? null}
-                onValueChange={(v) => field.onChange(v)}
-                options={deptOptions}
-                placeholder="None"
-              />
+              <AppSelect label={t("department")} value={field.value ?? null} onValueChange={(v) => field.onChange(v)} options={deptOptions} placeholder={t("none")} />
             )} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Controller name="type" control={control} render={({ field }) => (
-              <AppSelect label="Role" value={field.value} onValueChange={(v) => field.onChange(v ?? "customer")} options={roleOptions} />
+              <AppSelect label={t("role")} value={field.value} onValueChange={(v) => field.onChange(v ?? "customer")} options={roleOptions} />
             )} />
             <Controller name="language" control={control} render={({ field }) => (
-              <AppSelect label="Language" value={field.value} onValueChange={(v) => field.onChange(v ?? "en")} options={langOptions} />
+              <AppSelect label={t("language")} value={field.value} onValueChange={(v) => field.onChange(v ?? "en")} options={langOptions} />
             )} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={isSubmitting}>{editing ? "Save" : "Create"}</Button>
+            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)}>{t("cancel")}</Button>
+            <Button type="submit" loading={isSubmitting}>{editing ? t("save") : t("create")}</Button>
           </div>
         </form>
       </AppDialog>
 
-      {/* Delete dialog */}
       <AppDialog
         open={!!deleteTarget}
         onOpenChange={(v) => !v && setDeleteTarget(null)}
-        title="Delete user?"
-        description={`Delete ${deleteTarget?.name}? Their account will be anonymised.`}
+        title={t("users_delete_title")}
+        description={`${deleteTarget?.name} — ${t("users_delete_desc")}`}
       >
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={onDelete}>Delete</Button>
+          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>{t("cancel")}</Button>
+          <Button variant="danger" onClick={onDelete}>{t("delete")}</Button>
         </div>
       </AppDialog>
 
-      {/* Permissions dialog */}
       <AppDialog
         open={!!permTarget}
         onOpenChange={(v) => !v && setPermTarget(null)}
-        title={`Permissions — ${permTarget?.name}`}
-        description="Grant or revoke model-level permissions for this user."
+        title={`${t("users_permissions")} — ${permTarget?.name}`}
+        description={t("users_permissions_desc")}
         className="max-w-2xl"
       >
         {permLoading ? (
@@ -429,21 +396,21 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-3 py-2 font-medium text-slate-600 w-40">Model</th>
+                    <th className="text-left px-3 py-2 font-medium text-slate-600 w-40">{t("perm_model")}</th>
                     {PERMISSION_ACTIONS.map((a) => (
                       <th key={a} className="text-center px-3 py-2 font-medium text-slate-600 capitalize w-20">{a}</th>
                     ))}
-                    <th className="text-center px-3 py-2 font-medium text-slate-600 w-16">All</th>
+                    <th className="text-center px-3 py-2 font-medium text-slate-600 w-16">{t("perm_all")}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {PERMISSION_MODELS.map(({ key, label }, i) => {
+                  {PERMISSION_MODELS.map(({ key, labelKey }, i) => {
                     const allCodes = PERMISSION_ACTIONS.map((a) => permCode(a, key));
                     const allChecked = allCodes.every((c) => activePerms.has(c));
                     const someChecked = allCodes.some((c) => activePerms.has(c));
                     return (
                       <tr key={key} className={i % 2 === 0 ? "bg-white" : "bg-slate-50/50"}>
-                        <td className="px-3 py-2.5 font-medium text-slate-700">{label}</td>
+                        <td className="px-3 py-2.5 font-medium text-slate-700">{t(labelKey)}</td>
                         {PERMISSION_ACTIONS.map((action) => {
                           const code = permCode(action, key);
                           return (
@@ -472,10 +439,9 @@ export function UsersClient({ initialData, allUsers: _allUsers, departments }: U
                 </tbody>
               </table>
             </div>
-
             <div className="flex justify-end gap-2 pt-1">
-              <Button variant="secondary" onClick={() => setPermTarget(null)}>Cancel</Button>
-              <Button loading={permSaving} onClick={savePerms}>Save permissions</Button>
+              <Button variant="secondary" onClick={() => setPermTarget(null)}>{t("cancel")}</Button>
+              <Button loading={permSaving} onClick={savePerms}>{t("users_save_permissions")}</Button>
             </div>
           </div>
         )}

@@ -78,6 +78,17 @@ VALID_PERMISSIONS = [
 ]
 
 
+class UserPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["name", "phone", "language"]
+        extra_kwargs = {
+            "name": {"required": False},
+            "phone": {"required": False, "allow_blank": True, "allow_null": True},
+            "language": {"required": False},
+        }
+
+
 class UserPermissionSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
     permissions = serializers.ListField(
