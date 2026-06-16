@@ -38,6 +38,8 @@ services:
     command: >
       sh -c "python manage.py migrate --noinput &&
              uvicorn config.asgi:application --host 0.0.0.0 --port 9000 --workers 3"
+    ports:
+      - "127.0.0.1:9001:9000"
     env_file:
       - .env
     environment:
@@ -48,6 +50,8 @@ services:
       CACHE_LOCATION: redis:6379/1
       FRONTEND_URL: https://${DOMAIN}
       ALLOWED_HOSTS: ${DOMAIN},backend
+    volumes:
+      - ./oci_private_key.pem:/run/secrets/oci_key.pem:ro
     depends_on:
       db:
         condition: service_healthy
@@ -69,6 +73,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CACHE_LOCATION: redis:6379/1
       FRONTEND_URL: https://${DOMAIN}
+    volumes:
+      - ./oci_private_key.pem:/run/secrets/oci_key.pem:ro
     depends_on:
       db:
         condition: service_healthy
@@ -90,6 +96,8 @@ services:
       REDIS_URL: redis://redis:6379/0
       CACHE_LOCATION: redis:6379/1
       FRONTEND_URL: https://${DOMAIN}
+    volumes:
+      - ./oci_private_key.pem:/run/secrets/oci_key.pem:ro
     depends_on:
       db:
         condition: service_healthy
@@ -100,11 +108,15 @@ services:
     build:
       context: ./frontend
     restart: always
+    ports:
+      - "127.0.0.1:3001:3000"
     environment:
       NODE_ENV: production
       HOSTNAME: "0.0.0.0"
       PORT: "3000"
       DJANGO_INTERNAL_URL: http://backend:9000
+    volumes:
+      - ./oci_private_key.pem:/run/secrets/oci_key.pem:ro
     depends_on:
       - backend
 
