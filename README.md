@@ -1,4 +1,4 @@
-# SHeDS — Simple Helpdesk System
+# SHeDS — Simplified Helpdesk System
 
 A self-hosted helpdesk built with Django (backend) and Next.js (frontend), deployable with a single Docker Compose command.
 
